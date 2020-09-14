@@ -1,0 +1,26 @@
+{
+  "name": "jtkj-gateway",
+  "version": "1.0.0",
+  "description": "",
+  "main": "gateway.js",
+  "dependencies": {
+    "moment": "^2.28.0",
+    "mqtt": "^4.2.1",
+    "npm": "^6.14.8",
+    "serialport": "^9.0.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vilduviper/jtkj-gateway.git"
+  },
+  "author": "Vili Pelttari",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vilduviper/jtkj-gateway/issues"
+  },
+  "homepage": "https://github.com/vilduviper/jtkj-gateway#readme"
+}
