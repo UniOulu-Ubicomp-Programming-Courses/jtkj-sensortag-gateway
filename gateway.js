@@ -96,7 +96,17 @@ function unwrap(data) {
       return {sender: addr, msg: parts};
     }
   }
-  return {sender: addr, msg: parts};
+  var returnDict = {}, elem; // TODO temporary
+  if (elem = parts.find(a => a[0] == "pressure")) {
+    returnDict["sensortagID"] = addr;
+    returnDict["pressure"] = elem[1];
+  } else {
+    returnDict["sensortagID"] = addr;
+    returnDict["movement"] = parts.find(a => a[0] == "movement")[1];
+    returnDict["draw"] = parts.find(a => a[0] == "draw")[1];
+  }
+  return returnDict;
+  //return {sensortagID: addr, msg: parts};
 }
 
 /**
@@ -209,6 +219,7 @@ function main(serial) {
       dict = ["msg", unwrap(data)];
       //console.log(JSON.stringify(dict));
       if (!dict[1]) return; // don't send messages that didn't belong to this gateway
+      if (dict.pressure != null) dict[0] = "data";
       //dict[0] = "msg";
       send(dict);
     });
@@ -280,7 +291,9 @@ function showMsg(type, str) {
 function send(msg) {
   return new Promise(resolve => {
     let topic = msg[0];
-    let message = {};
+    let message = msg[1];
+    //let message = {};
+    /*
     if (typeof(msg[1]) == "object") { // TODO add the two message types
       message["sender"] = msg[1].sender;
       for (const part of msg[1].msg) {
@@ -290,9 +303,13 @@ function send(msg) {
     } else {
       message["msg"] = msg[1];
     }
-    message["timeStamp"] = moment().format();
+    */
+    if (topic == "msg") topic = "events";
+    else if (topic == "data") topic = "sensordata";
+    else return;//resolve();
+    message["timeStamp"] = moment().utc().format("YYYY-MM-DDTHH:mm:ss.SSS\\Z");
 
-    console.log(JSON.stringify(message));
+    console.log("Sending", JSON.stringify(message));
     let options = {};
     mqclient.publish(topic, JSON.stringify(message), options, err=>{
       if (err)

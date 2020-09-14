@@ -45,12 +45,12 @@ gateway.dataDescr = [
     cmp:  i => i[0]&0b100,
     fun:  d => [0, 4, 8].map(i => Math.round(10 * d.readFloatLE(i))/10)
   }, {
-    name: "press",
+    name: "pressure",
     uses: d => 4,
     cmp:  i => i[0]&0b10, // bit 2 from right
     fun:  d => Math.round(10 * d.readFloatLE())/10
   }, { // msg should be last (if it can consume all bytes)
-    name: "text",
+    name: "movement",
     uses: d => -1, // consume all remaining bytes
     cmp:  i => i[0]&1, // bit 1 from right
     fun:  d => d.toString().replace(/\0*$/, '') // extract data from buffer
