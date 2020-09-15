@@ -7,6 +7,7 @@
  *
  * Dependencies (npm):
  *    serialport
+ *    moment
  *    mqtt
  *
  * Capabilities:
@@ -19,11 +20,15 @@
  *    - Nice terminal interface
  *
  * Usage: Plug in a SensorTag via USB and run this file in powershell or similar with node.js.
+ *  - run powershell
+ *  - navigate to this folder and run command "npm install; node gateway"
  *
  * Pro tip: If there is someone spamming the ServerTag, first run the program, then plug in the
  * ServerTag. Wait for the reception to stop after a few connection tries, as in the red light
  * stops flashing and the 'Tag appears to have halted. Then send a message (type something and
  * press enter) and it should work perfectly. If not, try again in a Faraday cage.
+ *
+ * TODO remove terminal UI stuff to simplify the program for student use?
  */
 const
   ByteLength = require("@serialport/parser-byte-length");
