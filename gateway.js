@@ -21,14 +21,13 @@
  *
  * Usage: Plug in a SensorTag via USB and run this file in powershell or similar with node.js.
  *  - run powershell
- *  - navigate to this folder and run command "npm install; node gateway"
+ *  - navigate to this folder and run command "npm install; node gateway" // TODO FIX npm run
  *
  * Pro tip: If there is someone spamming the ServerTag, first run the program, then plug in the
  * ServerTag. Wait for the reception to stop after a few connection tries, as in the red light
  * stops flashing and the 'Tag appears to have halted. Then send a message (type something and
  * press enter) and it should work perfectly. If not, try again in a Faraday cage.
  *
- * TODO remove terminal UI stuff to simplify the program for student use?
  */
 const
   ByteLength = require("@serialport/parser-byte-length");
@@ -37,9 +36,9 @@ const
     readline = require("readline");
      gateway = require("./config");
       moment = require("moment");
-        mqtt = require("mqtt");
+        comm = require("./comm");
+        util = require("./util");
           fs = require("fs");
-const mqclient = mqtt.connect(gateway.mqtt.host, gateway.mqtt.options); // TODO does this do TLS?
 
 let port; // the serial port after it has been found and connected to
 
@@ -66,82 +65,51 @@ let port; // the serial port after it has been found and connected to
  *    <addr (2 bytes)><ID (1 byte)>[[ID], ...]<MSG PART 1>[[MSG PART 2], ...]
  */
 
-let mask = validationMask();
 let range = parseArgv();
 /**
- * @brief Unwraps the data in the received UART packet. Data format is given in the list
- *        'gateway.dataDescr'
- * @param data The received UART data. A Buffer, read-only
- * @return A dictionary with keys sender and msg where msg is the sent data, unwrapped according to
- * 'gateway.dataDescr' and sender is the sender
+ * @brief Read key-value pairs from received SensorTag message
+ * @param data The SensorTag message
+ * @return A dictionary with interpreted results?
  */
 function unwrap(data) {
-  let parts = [], pos = 2, uses, descr, error = false;
-  let addr = ("0000" + data.readUInt16LE().toString(16)).slice(-4);
-  if (range[2] && (range[0] > parseInt(addr) || parseInt(addr) < range[1])) return NaN;
-  do ; while (data[++pos-1]&0x80); // inc pos while extend bit is on
-  descr = data.slice(2, pos); // descr bytes start at index 2
-  for (const item of gateway.dataDescr) {
-    if (item.cmp(descr)) {
-      try {
-        parts.push([item.name, item.fun(data.slice(pos))]);
-        uses = item.uses(data.slice(pos));
-      } catch(e) {
-        console.log("Unwrap error:", e.message);
-        error = true;
+  let resultDicts = {}, sends = [], addr, tmp, pair, dtype;
+  console.log(">", data.toString().trim()); // TODO move this to a better place
+  return new Promise(async (resolve, reject) => {
+    if (process.argv.indexOf("-s") != -1) {
+      addr = ("0000" + data.readUInt16LE().toString(16)).slice(-4);
+      data = "id:" + addr + "," + data.slice(2).toString();
+    } else data = data.toString();
+    tokens = data.split(",");
+    for (const token of tokens) {
+      pair = token.split(":").map(d => d.trim()); // pair = [name, value]
+      dtype = gateway.dataTypes.find(type => type.shortName == pair[0]);
+      if (dtype != undefined) {
+        await dtype.fun(pair[1]).then(
+          d => {
+            for (const table of dtype.topics) {
+              if (dtype.forceSend && !sends.includes(table)) sends.push(table);
+              if (!(table in resultDicts)) resultDicts[table] = {};
+              resultDicts[table][dtype.nameInDB] = d;
+            }
+          },
+          reject /* pass error forward */);
+      } else {
+        // Couldn't find the name in the dataTypes. Find closest match...
+        reject("Error: Unknown field label \"" + pair[0] + "\". Did you mean \"" + util.closestMatch(pair[0].toLowerCase(), gateway.dataTypes.map(d=>d.shortName)) + "\"?");
       }
-      pos += uses;
-      if (pos >= data.length || uses == -1) break;
     }
-    // if the data description doesn't match possible values, send an error with the senderAddr
-    if (error || descr.length > mask.length) {// || descr.findIndex((d, i) => (d^mask[i])&d) != -1) {
-      console.log("Faults encountered in received message!");
-      console.log(error, descr, descr.length, mask.length, descr.findIndex((d, i) => (d^mask[i])&d));
-      parts.push(["error", "Faulty data description"]);
-      return {sender: addr, msg: parts};
-    }
-  }
-  var returnDict = {}, elem; // TODO temporary
-  if (elem = parts.find(a => a[0] == "pressure")) {
-    returnDict["sensortagID"] = addr;
-    returnDict["pressure"] = elem[1];
-  } else {
-    returnDict["sensortagID"] = addr;
-    returnDict["movement"] = parts.find(a => a[0] == "movement")[1];
-    returnDict["draw"] = parts.find(a => a[0] == "draw")[1];
-  }
-  return returnDict;
-  //return {sensortagID: addr, msg: parts};
-}
-
-/**
- * @brief Assumes binary gateway.dataDescr comparisons and builds a mask of all possible 'on' bits. This
- *        can be used to check for valid messages
- * @return The mask of possible 'on' bits in validation byte
- */
-function validationMask() {
-  let mask = [], position = [], found;
-  while (mask.push(0) && position.push(1)) {
-    found = false;
-    for (let i = 0; i < 8; ++i) {
-      for (const item of gateway.dataDescr) {
-        if (item.cmp(position)) {
-          mask[mask.length-1] |= position[position.length-1];
-          found = true;
-        }
-      }
-      position[position.length-1] <<= 1;
-    }
-    if (!found) return mask.slice(0, mask.length - 1);
-  }
+    for (const topic of gateway.topics)
+      if (!sends.includes(topic)) resultDicts[topic] = null;
+    resolve(resultDicts);
+  });
 }
 
 /**
  * @brief Parse vector of command line arguments for accepted senderAddr range
  * @return [lower bound, upper bound, checkRange]
  */
-function parseArgv() {
-  let i = process.argv.indexOf("-r")
+function parseArgv() { // TODO add proper argument parsing
+  let i = process.argv.indexOf("-r");
   let range;
   if (i > -1 && process.argv.length > i+1) {
     range = process.argv[i+1].split(":")
@@ -197,7 +165,7 @@ function main(serial) {
     return;
   }
 
-  port.on("close", function(err) { // disconnection detection is slow
+  port.on("close", function(err) { // disconnection detection is slow on some devices
     if (err != null && err.disconnected) {
       showMsg("error", "The SensorTag server disconnected from USB! Please reconnect.");
     } else if (err != null) {
@@ -210,8 +178,8 @@ function main(serial) {
       }
       parser.destroy();
       portFinder.findPorts(main); // retry connection
-    }, 500);
-    return;
+    }, 1500);
+    //return; // TODO TEST Why return here?
   });
 
   port.on("open", function() {
@@ -221,12 +189,10 @@ function main(serial) {
     parser.on("data", function(data) {
       if (!responded && parseChallenge(data)) return;
       // read the data
-      dict = ["msg", unwrap(data)];
+      //dict = ["msg", unwrap(data)]; // TODO
+      unwrap(data).then(comm.sendMsgs).catch(console.error);
       //console.log(JSON.stringify(dict));
-      if (!dict[1]) return; // don't send messages that didn't belong to this gateway
-      if (dict.pressure != null) dict[0] = "data";
-      //dict[0] = "msg";
-      send(dict);
+      //TODO: if (!dict[1]) return; // don't send messages that didn't belong to this gateway
     });
   });
 }
@@ -274,99 +240,10 @@ function sendChallenge() {
  */
 function showMsg(type, str) {
   return new Promise(resolve => {
-    /*if (type == "error")
-      console.error(str);
-    else*/
     console.log(str);
-    send([type, str]).then(resolve);
+    comm.send(type, str).then(resolve);
   });
 }
-
-/**
- * @brief Publish an MQTTS packet to the broker specified in 'mqclient'
- * @param msg A list [topic, obj] representing the message to send. For contents, see below
- * @return General resolve promise for running code after the transaction
- *
- * The first element in msg will be one of ["info", "error", "msg"].
- *    info:  Gateway status changes and general information
- *    error: Gateway error that might be good to know about
- *    msg:   A UART message was received and the obj contains SensorTag data
- *      - message contents in 'gateway.dataDescr' TBD
- */
-function send(msg) {
-  return new Promise(resolve => {
-    let topic = msg[0];
-    let message = msg[1];
-    //let message = {};
-    /*
-    if (typeof(msg[1]) == "object") { // TODO add the two message types
-      message["sender"] = msg[1].sender;
-      for (const part of msg[1].msg) {
-        if (part[0] == "dir") continue;
-        message[part[0]] = part[1];
-      }
-    } else {
-      message["msg"] = msg[1];
-    }
-    */
-    if (topic == "msg") topic = "events";
-    else if (topic == "data") topic = "sensordata";
-    else return;//resolve();
-    message["timeStamp"] = moment().utc().format("YYYY-MM-DDTHH:mm:ss.SSS\\Z");
-
-    console.log("Sending", JSON.stringify(message));
-    let options = {};
-    mqclient.publish(topic, JSON.stringify(message), options, err=>{
-      if (err)
-        console.error("Could not publish message to MQTT broker:", err.message);
-    });
-    resolve();
-  });
-}
-
-let ttl = 0, stime = 0;
-/* Connection event handler. Subscribes to topics. Connection is automatically re-established after
- * connection loss
- */
-mqclient.on("connect", ()=>{
-  console.log("Connected to MQTT Broker");
-  ttl = stime = 0;
-  mqclient.subscribe("commands");
-});
-
-/* Message event handler. Comprehends commands and other messages aimed at this gateway.
- *
- * Supported keys in received dictionary:
- *    -send: Send a 6LoWPAN message
- *        -addr: Receiver address
- *        -str:  Message text
- */
-mqclient.on("message", (topic, msg)=>{
-  try {
-    rxDict = JSON.parse(msg.toString());
-  } catch(e) {
-    showMsg("error", "Bad input JSON string received");
-    return;
-  }
-  if ("send" in rxDict) {
-    if (port.isOpen) {
-      uartWrite(rxDict.send);
-      // TODO maybe reply that it was written ok? Extra ack?
-    }
-  }
-});
-
-/* Connection error handler. Triggered every time an error occurs. Automatic reconnection attempts
-* also trigger it and the ttl--stime logic is to limit repeated error messages.
- */
-mqclient.on("error", err => {
-  if (err.code == "ECONNREFUSED") {
-    if (ttl > 0) {ttl--; return;}
-    console.log("Broker unreachable:", err.message);
-    ttl = stime = (stime < 50 ? stime+2 : 50);
-  }
-  else console.log(err);
-});
 
 // readline interface for reading console input
 const rl = readline.createInterface({
@@ -396,20 +273,26 @@ function consoleHandler(line) {
 
 // SIGINT handler
 process.once('SIGINT', function(code) {
-  showMsg("info", "Gateway encountered SIGINT. Exiting.").then(()=>{
-    mqclient.unsubscribe("commands");
-    mqclient.end(true, {reasonCode: 1, options: {reasonString: "SIGINT"}}, process.exit);
-  });
+  showMsg("info", "Gateway encountered SIGINT. Exiting.").then(comm.end("SIGINT"));
 });
 // SIGTERM handler
 process.once('SIGTERM', function(code) {
-  showMsg("info", "Gateway encountered SIGTERM. Exiting.").then(()=>{
-    mqclient.unsubscribe("commands");
-    mqclient.end(true, {reasonCode: 1, options: {reasonString: "SIGTERM"}}, process.exit);
-  });
+  showMsg("info", "Gateway encountered SIGTERM. Exiting.").then(comm.end("SIGTERM"));
 });
 
+// Start MQTT
+comm.startMQTT();
 // Start program
-process.stdout.write("\033[s"); // save cursor position
-portFinder.init(rl, showMsg, send, consoleHandler);
-portFinder.findPorts(main);
+//process.stdout.write("\033[s"); // save cursor position
+//portFinder.init(rl, showMsg, comm.send, consoleHandler);
+//portFinder.findPorts(main);
+if (process.argv.indexOf("-s") != -1) {
+  unwrap(Buffer.from("abevent:UP")).then(console.log).catch(console.error);
+} else {
+  let fun = async () => {
+    await unwrap(Buffer.from("id:0123,Evet:Up\r\n")).then(comm.sendMsgs).catch(console.error);
+    await unwrap(Buffer.from("id:0123,event:Up\r\n")).then(comm.sendMsgs).catch(console.error);
+    await unwrap(Buffer.from("id:0123,event:UP\r\n")).then(comm.sendMsgs).catch(console.error);
+  }
+  fun();
+}

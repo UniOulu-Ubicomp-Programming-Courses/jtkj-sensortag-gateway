@@ -65,7 +65,7 @@ let
  * @brief Find new serial devices and connect to them automatically if they are SensorTags
  * @return Promise resolve when a suitable SensorTag has been found, with the port path
  */
-function listPorts() { // TODO shorten this function (make a new 'Task' for automatic device selection?)
+function listPorts() {
   process.stdout.write("\033[u\033[0J");
   let update = false;
   let finds = 0, oldfinds = 0;
@@ -79,7 +79,6 @@ function listPorts() { // TODO shorten this function (make a new 'Task' for auto
             update = true;
             all[port.path] = port.pnpId;
             count++;
-            //send(["event", {num: count, path: port.path, id: port.pnpId}]);
           }
           finds |= 1<<(Object.keys(all).indexOf(port.path));
         });
@@ -183,7 +182,7 @@ function portUIInput() {
  * @param cb Callback function (main)
  * @return Calls cb with the opened port
  */
-async function portUI(cb) { // TODO add HTTPS interface for selecting a serial device. Automated approach might be always correct though
+async function portUI(cb) {
   let path = "", start = true;
   count = 0;
   ok = [];
@@ -202,7 +201,7 @@ async function portUI(cb) { // TODO add HTTPS interface for selecting a serial d
     showMsg("error", "Bad port: " + err.message);
     portUI(cb);
     return;
-  }); // TODO move this to main?
+  }); // TODO move to gateway.main and form this into resolve
   rl.removeAllListeners(["line"]);
   rl.on("line", consoleHandler);
   cb(port);

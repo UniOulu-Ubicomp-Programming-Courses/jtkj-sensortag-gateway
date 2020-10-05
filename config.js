@@ -14,46 +14,139 @@ gateway.uart.rxlength = 32;
 gateway.uart.txlength = 17;
 gateway.uart.baudRate = 57600;
 
-// XXX Edit this for configuring new demos XXX
-
-/* Description of the data format: Add entries to include more possible data properties.
- *
- * name: Name this property will have in sent MQTT messages
- * uses: Function for the number of bytes this property will consume from buffer, argument is the data buffer (see fun)
- *  cmp: Test for if this property is given in the data buffer, according to the given data type
- *       identifier argument (a Buffer array!)
- *  fun: Function that extracts the data from the buffer's beginning. Buffer is always scrolled so
- *       the data specific to this property is given in the beginning
- *
- * Note: This list will be looped through, so this list's order determines the order in which the
- *       data will be in the messages from SensorTags.
- */
-gateway.dataDescr = [
-  {
-    name: "draw",
-    uses: d => 0,
-    cmp:  i => (i[0]&0b1001) == 0b1,
-    fun:  d => 0
+gateway.topics = [ // for SensorTag data topics
+  "events",
+  "sensordata",
+];
+gateway.dataTypes = [{
+    shortName: "time",
+    nameInDB: "timeDONTSEND",
+    topics: ["events", "sensordata"],
+    forceSend: false,
+    fun: d => new Promise((resolve, reject) => { // d is String
+      let a = Number.parseInt(d);
+      if (isNaN(a)) reject("Error: Non-numeric timestamp: " + d);
+      resolve(a);
+    }),
   }, {
-    name: "draw",
-    uses: d => 0,
-    cmp:  i => (i[0]&0b1001) == 0b1001,
-    fun:  d => 1
+    shortName: "id",
+    nameInDB: "sensortagID",
+    topics: ["events", "sensordata"],
+    forceSend: false,
+    fun: d => new Promise((resolve, reject) => {
+      if (!isNaN(Number.parseInt(d, 16)) && d.length <= 4) {
+        resolve(d);
+      } else reject("Error: SensorTag ID has to be 4 hex digits: " + d);
+    }),
   }, {
-    name: "dir",
-    uses: d => 12, // consumes 4 floats = 12 bytes
-    cmp:  i => i[0]&0b100,
-    fun:  d => [0, 4, 8].map(i => Math.round(10 * d.readFloatLE(i))/10)
+    shortName: "event",
+    nameInDB: "movement",
+    topics: ["events"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      if (["UP", "DOWN", "LEFT", "RIGHT"].includes(d)) resolve(d);
+      else reject("Error: Event name not recognized: " + d);
+    }),
   }, {
-    name: "pressure",
-    uses: d => 4,
-    cmp:  i => i[0]&0b10, // bit 2 from right
-    fun:  d => Math.round(10 * d.readFloatLE())/10
-  }, { // msg should be last (if it can consume all bytes)
-    name: "movement",
-    uses: d => -1, // consume all remaining bytes
-    cmp:  i => i[0]&1, // bit 1 from right
-    fun:  d => d.toString().replace(/\0*$/, '') // extract data from buffer
+    shortName: "temp",
+    nameInDB: "temperature",
+    topics: ["sensordata"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number.parseFloat(d);
+      if (isNaN(a)) reject("Error: Non-numeric temperature: " + d);
+      resolve(a);
+    }),
+  }, {
+    shortName: "humid",
+    nameInDB: "humidity",
+    topics: ["sensordata"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number.parseFloat(d);
+      if (isNaN(a)) reject("Error: Non-numeric humidity: " + d);
+      resolve(a);
+    }),
+  }, {
+    shortName: "press",
+    nameInDB: "pressure",
+    topics: ["sensordata"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number.parseFloat(d);
+      if (isNaN(a)) reject("Error: Non-numeric pressure: " + d);
+      resolve(a);
+    }),
+  }, {
+    shortName: "light",
+    nameInDB: "lightIntensity",
+    topics: ["sensordata"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number.parseFloat(d);
+      if (isNaN(a)) reject("Error: Non-numeric light intensity: " + d);
+      resolve(a);
+    }),
+  }, {
+    shortName: "accx",
+    nameInDB: "accx",
+    topics: ["sensordata"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number.parseFloat(d);
+      if (isNaN(a)) reject("Error: Non-numeric acceleration (x): " + d);
+      resolve(a);
+    }),
+  }, {
+    shortName: "accy",
+    nameInDB: "accy",
+    topics: ["sensordata"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number.parseFloat(d);
+      if (isNaN(a)) reject("Error: Non-numeric acceleration (y): " + d);
+      resolve(a);
+    }),
+  }, {
+    shortName: "accz",
+    nameInDB: "accz",
+    topics: ["sensordata"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number.parseFloat(d);
+      if (isNaN(a)) reject("Error: Non-numeric acceleration (z): " + d);
+      resolve(a);
+    }),
+  }, {
+    shortName: "gyrox",
+    nameInDB: "gyrox",
+    topics: ["sensordata"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number.parseFloat(d);
+      if (isNaN(a)) reject("Error: Non-numeric gyroscope (x): " + d);
+      resolve(a);
+    }),
+  }, {
+    shortName: "gyroy",
+    nameInDB: "gyroy",
+    topics: ["sensordata"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number.parseFloat(d);
+      if (isNaN(a)) reject("Error: Non-numeric gyroscope (y): " + d);
+      resolve(a);
+    }),
+  }, {
+    shortName: "gyroz",
+    nameInDB: "gyroz",
+    topics: ["sensordata"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number.parseFloat(d);
+      if (isNaN(a)) reject("Error: Non-numeric gyroscope (z): " + d);
+      resolve(a);
+    }),
   }
 ];
 
