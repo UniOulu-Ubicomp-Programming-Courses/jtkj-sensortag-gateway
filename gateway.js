@@ -2,8 +2,8 @@
  * @file gateway.js
  * @brief UART 2-way communication handler for a ServerTag on JTKJ
  * @author Vili Pelttari
- * @version 1.1.4
- * @date 12.08.2020
+ * @version 1.1.5
+ * @date 14.10.2020
  *
  * Dependencies (npm):
  *    serialport
@@ -42,30 +42,7 @@ const
 
 let port; // the serial port after it has been found and connected to
 
-/* Data transfer protocol over 6LoWPAN from SensorTags to the SensorTag acting as server:
- *
- * The 6LoWPAN message will be a byte array, with the 'data identifier' byte(s) in the beginning:
- *
- *    <ID>[[ID], ...]<MSG PART 1>[[MSG PART 2], ...]
- *
- * Currently, ID has a variable length. As ID is represented in bytes, each ID byte has 7 different
- * data identifier bits and 1 'extension byte follows' bit.
- *                       76543210
- *    ID byte structure: eddddddd
- *    in standard left-MSB, where
- *        e: 'extension byte follows' flag. If e=1 in first byte and e=0 in second byte, ID is 2 bytes long
- *        d: data identifier flag: 1 if the datum corresponding to the position is given in this message
- *
- * MSG PART is usually little-endian encoded because of SensorTag endianness. NOTE: MSG PARTs should
- * be in the same order as in data identifier bytes (ID) to be correctly labeled.
- *
- * When this message is transferred over UART, the sender address is added to the beginning, giving
- * the message we read in this program:
- *    
- *    <addr (2 bytes)><ID (1 byte)>[[ID], ...]<MSG PART 1>[[MSG PART 2], ...]
- */
-
-let range = parseArgv();
+//let range = util.parseArgv(); // TODO
 /**
  * @brief Read key-value pairs from received SensorTag message
  * @param data The SensorTag message
@@ -73,18 +50,18 @@ let range = parseArgv();
  */
 function unwrap(data) {
   let resultDicts = {}, sends = [], addr, tmp, pair, dtype;
-  console.log(">", data.toString().trim()); // TODO move this to a better place
   return new Promise(async (resolve, reject) => {
     if (process.argv.indexOf("-s") != -1) {
       addr = ("0000" + data.readUInt16LE().toString(16)).slice(-4);
       data = "id:" + addr + "," + data.slice(2).toString();
     } else data = data.toString();
+    console.log(">", data.trim()); // TODO move this to a better place
     tokens = data.split(",");
     for (const token of tokens) {
       pair = token.split(":").map(d => d.trim()); // pair = [name, value]
       dtype = gateway.dataTypes.find(type => type.shortName == pair[0]);
       if (dtype != undefined) {
-        await dtype.fun(pair[1]).then(
+        await dtype.fun(pair[1].replace(/\x00/g, '')).then(
           d => {
             for (const table of dtype.topics) {
               if (dtype.forceSend && !sends.includes(table)) sends.push(table);
@@ -95,29 +72,14 @@ function unwrap(data) {
           reject /* pass error forward */);
       } else {
         // Couldn't find the name in the dataTypes. Find closest match...
-        reject("Error: Unknown field label \"" + pair[0] + "\". Did you mean \"" + util.closestMatch(pair[0].toLowerCase(), gateway.dataTypes.map(d=>d.shortName)) + "\"?");
+        reject("Error: Unknown field label \"" + pair[0] + "\". Did you mean \"" +
+          util.closestMatch(pair[0].toLowerCase(), gateway.dataTypes.map(d=>d.shortName)) + "\"?");
       }
     }
     for (const topic of gateway.topics)
       if (!sends.includes(topic)) resultDicts[topic] = null;
     resolve(resultDicts);
   });
-}
-
-/**
- * @brief Parse vector of command line arguments for accepted senderAddr range
- * @return [lower bound, upper bound, checkRange]
- */
-function parseArgv() { // TODO add proper argument parsing
-  let i = process.argv.indexOf("-r");
-  let range;
-  if (i > -1 && process.argv.length > i+1) {
-    range = process.argv[i+1].split(":")
-    range[0] = parseInt(range[0])
-    range[1] = parseInt(range[1])
-    range[2] = true;
-  } else return [0, 9999, false]
-  return range
 }
 
 /**
@@ -128,11 +90,15 @@ function parseArgv() { // TODO add proper argument parsing
  *          -addr: Receiver address as a string of four hex characters ('ffff' is broadcast)
  */
 function uartWrite(msg, publish=true) {
-  let txBuf = Buffer.alloc(gateway.uart.txlength);
-  if ("addr" in msg) {
-    txBuf.hexWrite(msg.addr);
+  let txBuf = Buffer.alloc(gateway.uart.txlength), addr = "ffff";
+  if (process.argv.indexOf("-s") != -1 && !("internal" in msg)) {
+    if ("addr" in msg && msg.addr != null)
+      addr = msg.addr;
+    txBuf.hexWrite(addr);
     txBuf.asciiWrite(msg.str, 2);
-  } else txBuf.asciiWrite(msg.str);
+  } else {
+    txBuf.asciiWrite(msg.str);
+  }
 
   port.write(txBuf, function(err) {
     if (err) {
@@ -179,20 +145,20 @@ function main(serial) {
       parser.destroy();
       portFinder.findPorts(main); // retry connection
     }, 1500);
-    //return; // TODO TEST Why return here?
   });
 
   port.on("open", function() {
     let dict = [], topic = "";
     showMsg("info", "UART connection opened.");
-    setTimeout(sendChallenge, 1000);
+    // TODO clear the read buffer after every read to prevent out-of-sync buffer on start. Buffer
+    // clearing not implemented in serialport library at this time.
+    if (process.argv.indexOf("-s") != -1)
+      setTimeout(sendChallenge, 1000);
+    else responded = true;
     parser.on("data", function(data) {
       if (!responded && parseChallenge(data)) return;
       // read the data
-      //dict = ["msg", unwrap(data)]; // TODO
       unwrap(data).then(comm.sendMsgs).catch(console.error);
-      //console.log(JSON.stringify(dict));
-      //TODO: if (!dict[1]) return; // don't send messages that didn't belong to this gateway
     });
   });
 }
@@ -219,7 +185,7 @@ function parseChallenge(data) {
  *        that will disconnect it if it didn't respond correctly
  */
 function sendChallenge() {
-  uartWrite({str: "\x00\x00\x01Identify"}, false);
+  uartWrite({str: "\x00\x00\x01Identify", internal: true}, false);
   responded = false;
   setTimeout(function() { // wait the grace period and check 'responded' after that
     if (!responded) {
@@ -283,16 +249,16 @@ process.once('SIGTERM', function(code) {
 // Start MQTT
 comm.startMQTT();
 // Start program
-//process.stdout.write("\033[s"); // save cursor position
-//portFinder.init(rl, showMsg, comm.send, consoleHandler);
-//portFinder.findPorts(main);
-if (process.argv.indexOf("-s") != -1) {
+process.stdout.write("\033[s"); // save cursor position
+portFinder.init(rl, showMsg, comm.send, consoleHandler);
+portFinder.findPorts(main);
+/*if (process.argv.indexOf("-s") != -1) {
   unwrap(Buffer.from("abevent:UP")).then(console.log).catch(console.error);
 } else {
   let fun = async () => {
-    await unwrap(Buffer.from("id:0123,Evet:Up\r\n")).then(comm.sendMsgs).catch(console.error);
-    await unwrap(Buffer.from("id:0123,event:Up\r\n")).then(comm.sendMsgs).catch(console.error);
-    await unwrap(Buffer.from("id:0123,event:UP\r\n")).then(comm.sendMsgs).catch(console.error);
+    await unwrap(Buffer.from("id:0123,Evet:Up,light:32\r\n")).then(comm.sendMsgs).catch(console.error);
+    await unwrap(Buffer.from("id:0123,event:Up,light:32\r\n")).then(comm.sendMsgs).catch(console.error);
+    await unwrap(Buffer.from("id:0123,event:UP,light:32\r\n")).then(comm.sendMsgs).catch(console.error);
   }
   fun();
-}
+}*/

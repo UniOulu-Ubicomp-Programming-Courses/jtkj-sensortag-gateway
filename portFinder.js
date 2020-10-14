@@ -2,8 +2,8 @@
   * @file portFinder.js
   * @brief Module for finding serial ports in gateway.js
   * @author Vili Pelttari
-  * @version 1.0.2
-  * @date 07.07.2020
+  * @version 1.0.3
+  * @date 14.10.2020
   */
 
 const gateway = require("./config");
@@ -68,7 +68,7 @@ let
 function listPorts() {
   process.stdout.write("\033[u\033[0J");
   let update = false;
-  let finds = 0, oldfinds = 0;
+  let finds = 0, oldfinds = 0; // good up to 53 devices
   return new Promise(resolve =>{
     let portlister = setInterval(async () => {
       if (count == -1) { clearInterval(portlister); return; }
@@ -97,16 +97,16 @@ function listPorts() {
         }
       }
       // try a different port if the other one didn't respond correctly before
-      if (ok.length) {
+      if (gateway.ports.autofind && ok.length) {
         ok.sort();
         n %= ok.length;
-        if (blacklist[ok[n][1]] > 3) { // stop spamming a port after 4 tries
+        if (blacklist[ok[n][1]] > gateway.ports.maxTries) { // stop spamming a port after maxTries tries
           n++;
           return;
         }
-        clearInterval(portlister); // count = -1; works too
+        clearInterval(portlister);
         resolve(ok[n++][0]);
-      }
+      } else if (!gateway.ports.autofind && count > 0) clearInterval(portlister); // stop port finding if port was selected
     }, 1000); // look for new ports every second
   });
 }

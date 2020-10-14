@@ -27,3 +27,20 @@ function levenshtein(str1, str2) {
     levenshtein(sstr1, str2),
     levenshtein(sstr1, sstr2));
 }
+
+/**
+ * @brief Parse vector of command line arguments for accepted senderAddr range
+ * @return [lower bound, upper bound, checkRange]
+ */
+/*function parseArgv() { // TODO add proper argument parsing
+  let i = process.argv.indexOf("-r");
+  let range;
+  if (i > -1 && process.argv.length > i+1) {
+    range = process.argv[i+1].split(":")
+    range[0] = parseInt(range[0])
+    range[1] = parseInt(range[1])
+    range[2] = true;
+  } else return [0, 9999, false]
+  return range
+}*/
+

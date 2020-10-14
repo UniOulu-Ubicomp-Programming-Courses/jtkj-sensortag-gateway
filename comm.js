@@ -21,7 +21,7 @@ module.exports = {
  */
 function send(topic, msg) {
   return new Promise(resolve => {
-    console.log("Sending", JSON.stringify(msg), "on", topic);
+    //console.log("Sending", JSON.stringify(msg), "on", topic);
     let options = {};
     mqclient.publish(topic, JSON.stringify(msg), options, err=>{
       if (err)
@@ -60,7 +60,7 @@ function startMQTT() {
    *        -str:  Message text
    */
   mqclient.on("message", (topic, msg)=>{
-    try {
+    try { // TODO move to main
       rxDict = JSON.parse(msg.toString());
     } catch(e) {
       showMsg("error", "Bad input JSON string received");
@@ -75,7 +75,7 @@ function startMQTT() {
   });
 
   /* Connection error handler. Triggered every time an error occurs. Automatic reconnection attempts
-  * also trigger it and the ttl--stime logic is to limit repeated error messages.
+   * also trigger it and the ttl--stime logic is to limit repeated error messages.
    */
   mqclient.on("error", err => {
     if (err.code == "ECONNREFUSED") {

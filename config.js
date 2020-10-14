@@ -10,9 +10,13 @@ gateway.mqtt.options = {
     //cert: fs.readFileSync('certs/client/client.crt'),
 };
 gateway.uart = {};
-gateway.uart.rxlength = 32;
+gateway.uart.rxlength = 82;
 gateway.uart.txlength = 17;
 gateway.uart.baudRate = 57600;
+
+gateway.ports = {};
+gateway.ports.autofind = true; // TODO toggle with cli option
+gateway.ports.maxTries = 5;
 
 gateway.topics = [ // for SensorTag data topics
   "events",
@@ -20,7 +24,7 @@ gateway.topics = [ // for SensorTag data topics
 ];
 gateway.dataTypes = [{
     shortName: "time",
-    nameInDB: "timeDONTSEND",
+    nameInDB: "timestamp",
     topics: ["events", "sensordata"],
     forceSend: false,
     fun: d => new Promise((resolve, reject) => { // d is String
@@ -38,16 +42,22 @@ gateway.dataTypes = [{
         resolve(d);
       } else reject("Error: SensorTag ID has to be 4 hex digits: " + d);
     }),
-  }, {
+  },
+
+
+  {
     shortName: "event",
     nameInDB: "movement",
     topics: ["events"],
     forceSend: true,
     fun: d => new Promise((resolve, reject) => {
-      if (["UP", "DOWN", "LEFT", "RIGHT"].includes(d)) resolve(d);
+      if (["UP", "DOWN", "LEFT", "RIGHT"].includes(d.trim())) resolve(d.trim());
       else reject("Error: Event name not recognized: " + d);
     }),
-  }, {
+  },
+
+
+  {
     shortName: "temp",
     nameInDB: "temperature",
     topics: ["sensordata"],
