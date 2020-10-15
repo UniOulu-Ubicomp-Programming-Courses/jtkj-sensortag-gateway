@@ -80,7 +80,7 @@ function startMQTT() {
   mqclient.on("error", err => {
     if (err.code == "ECONNREFUSED") {
       if (ttl > 0) {ttl--; return;}
-      if (process.argv.indexOf("-s") != -1) // TODO treating the symptom instead of the problem
+      if (false && process.argv.indexOf("-s") != -1) // TODO treating the symptom instead of the problem
         console.log("Broker unreachable:", err.message);
       ttl = stime = (stime < 50 ? stime+2 : 50);
     }

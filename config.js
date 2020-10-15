@@ -10,9 +10,16 @@ gateway.mqtt.options = {
     //cert: fs.readFileSync('certs/client/client.crt'),
 };
 gateway.uart = {};
-gateway.uart.rxlength = 82;
 gateway.uart.txlength = 17;
-gateway.uart.baudRate = 57600;
+gateway.uart.baudRate = 9600;
+
+// Length parser
+gateway.uart.pipe = "length";
+gateway.uart.rxlength = 82;
+
+// Delimiter parser
+//gateway.uart.pipe = "delimiter";
+gateway.uart.delim = "\x00";
 
 gateway.ports = {};
 gateway.ports.autofind = true; // TODO toggle with cli option

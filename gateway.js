@@ -31,6 +31,7 @@
  */
 const
   ByteLength = require("@serialport/parser-byte-length");
+  Delimiter = require("@serialport/parser-delimiter");
   portFinder = require("./portFinder");
   SerialPort = require("serialport");
     readline = require("readline");
@@ -125,7 +126,10 @@ function main(serial) {
   port = serial;
 
   try {
-    parser = port.pipe(new ByteLength({length: gateway.uart.rxlength}));
+    if (gateway.uart.pipe == "length")
+        parser = port.pipe(new ByteLength({length: gateway.uart.rxlength}));
+    else
+        parser = port.pipe(new Delimiter({delimiter: gateway.uart.delim}));
   } catch(e) {
     showMsg("error", "Error opening port parser: " + e.message);
     return;
@@ -152,7 +156,7 @@ function main(serial) {
     showMsg("info", "UART connection opened.");
     // TODO clear the read buffer after every read to prevent out-of-sync buffer on start. Buffer
     // clearing not implemented in serialport library at this time.
-    if (process.argv.indexOf("-s") != -1)
+    if (gateway.uart.pipe == "length" && process.argv.indexOf("-s") != -1)
       setTimeout(sendChallenge, 1000);
     else responded = true;
     parser.on("data", function(data) {
