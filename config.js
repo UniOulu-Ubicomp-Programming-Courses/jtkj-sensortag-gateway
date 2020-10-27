@@ -1,8 +1,14 @@
+/**
+ * @file config.js
+ * @brief Configuration for gateway.js
+ * @author Vili Pelttari
+ * @date 27.10.2020
+ */
+const util = require("./lib/util.js");
 var gateway = {};
 
 gateway.mqtt = {};
-// real port is 1883, test server on 3003
-gateway.mqtt.host = 'mqtt://localhost:1883';
+gateway.mqtt.host = 'mqtt://localhost:10311';
 gateway.mqtt.options = {
     //ca: fs.readFileSync('certs/root/root.crt'), // XXX a custom certificate file
   // XXX client certificates for MQTTS (TLS version of MQTT):
@@ -13,26 +19,29 @@ gateway.uart = {};
 gateway.uart.txlength = 17;
 gateway.uart.baudRate = 9600;
 
-// Length parser
-gateway.uart.pipe = "length";
-gateway.uart.rxlength = 82;
-
 // Delimiter parser
-//gateway.uart.pipe = "delimiter";
+gateway.uart.pipe = "delimiter";
 gateway.uart.delim = "\x00";
 
+// Length parser
+//gateway.uart.pipe = "length";
+gateway.uart.rxlength = 82;
+
 gateway.ports = {};
-gateway.ports.autofind = true; // TODO toggle with cli option
+gateway.ports.autofind = true;
 gateway.ports.maxTries = 5;
 
+// Mutes the 'Broker unreachable' warning if it is spammed
+gateway.muteConnectionError = false;
+
 gateway.topics = [ // for SensorTag data topics
-  "events",
+  "event",
   "sensordata",
 ];
 gateway.dataTypes = [{
     shortName: "time",
     nameInDB: "timestamp",
-    topics: ["events", "sensordata"],
+    topics: ["event", "sensordata"],
     forceSend: false,
     fun: d => new Promise((resolve, reject) => { // d is String
       let a = Number.parseInt(d);
@@ -42,7 +51,7 @@ gateway.dataTypes = [{
   }, {
     shortName: "id",
     nameInDB: "sensortagID",
-    topics: ["events", "sensordata"],
+    topics: ["event", "sensordata"],
     forceSend: false,
     fun: d => new Promise((resolve, reject) => {
       if (!isNaN(Number.parseInt(d, 16)) && d.length <= 4) {
@@ -55,7 +64,7 @@ gateway.dataTypes = [{
   {
     shortName: "event",
     nameInDB: "movement",
-    topics: ["events"],
+    topics: ["event"],
     forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       if (["UP", "DOWN", "LEFT", "RIGHT"].includes(d.trim())) resolve(d.trim());
@@ -166,5 +175,12 @@ gateway.dataTypes = [{
     }),
   }
 ];
+
+gateway.server = {};
+gateway.server.baudRate = 57600;
+gateway.server.pipe = "length";
+gateway.isServer = false;
+
+util.parseArgv(gateway);
 
 module.exports = gateway;
