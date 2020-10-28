@@ -23,7 +23,7 @@
  */
 const
   ByteLength = require("@serialport/parser-byte-length");
-  Delimiter = require("@serialport/parser-delimiter");
+   Delimiter = require("@serialport/parser-delimiter");
   portFinder = require("./lib/portFinder");
   SerialPort = require("serialport");
     readline = require("readline");
@@ -97,6 +97,9 @@ function main(serial) {
  */
 function parseChallenge(data) {
   let str;
+  if (gateway.debugMode) {
+    console.log("UART:", JSON.stringify(data.toString().replace(/\x00*$/, '')));
+  }
   if (data[0] == data[1] && data[1] == 0xfe && data[2] == 1) {
     str = data.slice(3).toString().replace(/\0*$/g, '');
     showMsg("info", "Challenge response: " + str);

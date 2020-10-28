@@ -48,7 +48,7 @@ gateway.dataTypes = [{
       if (isNaN(a)) reject("Error: Non-numeric timestamp: " + d);
       resolve(a);
     }),
-  }, {
+  }, { // TODO ID must be in the message!
     shortName: "id",
     nameInDB: "sensortagID",
     topics: ["event", "sensordata"],
@@ -180,6 +180,8 @@ gateway.server = {};
 gateway.server.baudRate = 57600;
 gateway.server.pipe = "length";
 gateway.isServer = false;
+
+gateway.debugMode = false;
 
 util.parseArgv(gateway);
 

@@ -10,9 +10,10 @@ nodejs
 npm
 ```
 
-* Copy this to your computer
-* Open a terminal in this directory
-* Run `npm install`
+Usage instructions:
+* Copy this project to your computer
+* Open a terminal in the project directory
+* Run `npm install` once
 * Run `node gateway`
 
 The basic config uses baudrate 9600 and UART messages end in '\0'.
