@@ -257,6 +257,8 @@ process.once('SIGTERM', function(code) {
   showMsg("info", "Gateway encountered SIGTERM. Exiting.").then(() => {port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGTERM")});
 });
 
+// Initiate comm
+comm.init(uartWrite);
 // Start MQTT
 comm.startMQTT();
 // Start program
