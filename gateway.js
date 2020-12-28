@@ -2,7 +2,7 @@
  * @file gateway.js
  * @brief UART 2-way communication handler for SensorTags
  * @author Vili Pelttari
- * @date 27.10.2020
+ * @date 28.12.2020
  *
  * Dependencies (npm):
  *    serialport
@@ -14,12 +14,13 @@
  *    - Should automatically find the right port
  *    - Sends data to the MQTT broker
  *    - Receives data over MQTTS subscription
- *    - Nice terminal interface
  *
  * Usage: Plug in a SensorTag via USB and run this file in powershell or similar with node.js.
  *  - run powershell
  *  - navigate to this folder and run command "npm install; node gateway"
  *
+ * Windows: Set Quick Edit Mode and Insert Mode off in running terminal. This stops sleeping
+ * process.
  */
 const
   ByteLength = require("@serialport/parser-byte-length");
@@ -44,15 +45,21 @@ let responded = false;
  * ServerTags and realigns the parse buffers on both ends if necessary. Hopefully they will not go
  * out of sync after a stable connection has been established (add logic to port.on('data')).
  */
-function main(serial) {
+function main(path) {
   let parser;
-  port = serial;
+  //port = serial;
+  port = new SerialPort(path, {baudRate: gateway.uart.baudRate}, function(err) {
+    if (err === null) return;
+    showMsg("error", "Bad port: " + err.message);
+    portFinder.findPorts().then(main);
+    return; // leave portfinder to searching and exit main meanwhile
+  });
 
   try {
     if (gateway.uart.pipe == "length")
-        parser = port.pipe(new ByteLength({length: gateway.uart.rxlength}));
+      parser = port.pipe(new ByteLength({length: gateway.uart.rxlength}));
     else
-        parser = port.pipe(new Delimiter({delimiter: gateway.uart.delim}));
+      parser = port.pipe(new Delimiter({delimiter: gateway.uart.delim}));
   } catch(e) {
     showMsg("error", "Error opening port parser: " + e.message);
     return;
@@ -70,7 +77,8 @@ function main(serial) {
         responded = false;
       }
       parser.destroy();
-      portFinder.findPorts(main); // retry connection
+      portFinder.findPorts().then(main); // retry connection
+      return; // leave portfinder to searching and exit main meanwhile
     }, 1500);
   });
 
@@ -84,7 +92,7 @@ function main(serial) {
     else responded = true;
     parser.on("data", function(data) {
       if (!responded && !parseChallenge(data)) return;
-      // read the data
+      // read the data, send via MQTT on success and show errors in console on failure
       unwrap(data).then(comm.sendMsgs).catch(console.error);
     });
   });
@@ -129,17 +137,19 @@ function sendChallenge() {
 
 /**
  * @brief Read key-value pairs from received SensorTag message
- * @param data The SensorTag message
- * @return A dictionary with interpreted results?
+ * @param data The SensorTag message: "id:XXXX,data1:CCCCCCCC,..."
+ * @return Promise resolves with a list of dictionaries for each MQTT topic. Rejects with error
+ * messages
  */
 function unwrap(data) {
   let resultDicts = {}, sends = [], addr, tmp, pair, dtype;
   return new Promise(async (resolve, reject) => {
     if (gateway.isServer) {
+      // if in server use, the senderAddr is given in two bytes in the beginning of the message
       addr = ("0000" + data.readUInt16LE().toString(16)).slice(-4);
-      data = "id:" + addr + "," + data.slice(2).toString();
+      data = "id:" + addr + "," + data.slice(2).toString(); // represent addr in common form
     } else data = data.toString();
-    console.log(">", data.trim());
+    console.log(">", data.trim()); // show parsed data in terminal
     tokens = data.split(",");
     for (const token of tokens) {
       pair = token.split(":").map(d => d.trim()); // pair = [name, value]
@@ -148,7 +158,7 @@ function unwrap(data) {
         await dtype.fun(pair[1].replace(/\x00/g, '')).then(
           d => {
             for (const table of dtype.topics) {
-              if (dtype.forceSend && !sends.includes(table)) sends.push(table);
+              if (dtype.forceSend != false && !sends.includes(table)) sends.push(table);
               if (!(table in resultDicts)) resultDicts[table] = {};
               resultDicts[table][dtype.nameInDB] = d;
             }
@@ -182,12 +192,17 @@ function consoleHandler(line) {
       gateway.muteConnectionError = false;
       console.log("Subscriber connection errors unmuted.\n")
     } else if (line == ".help") {
+      let sendInstruction = gateway.isServer ?
+          "\nAny message not starting with '.' will be sent to address 0xffff."
+            + "\nAddress can be specified using XXXX# prefix.\n"
+          :
+          "\nAny message not starting with '.' will be sent to the SensorTag.\n";
       console.log("Supported commands:\n" +
         "  .reconnect   Force port reconnect\n" +
         "  .mute        Mute the 'Broker unreachable' warning\n" +
-        "  .unmute      Unmute the 'Broker unreachable' warning\n");
+        "  .unmute      Unmute the 'Broker unreachable' warning\n" + sendInstruction);
     } else console.log("Unknown command");
-  } else if (!gateway.isServer) {
+  } else if (!gateway.isServer) { // not server, so all input is sent raw (internal: true)
     uartWrite({internal: true, str: line});
   } else if (/[0-9a-f]{4}#.+/i.test(line)) {
     let parts = line.split(/#(.+)/, 2);
@@ -237,7 +252,8 @@ function uartWrite(msg, publish=true) {
 function showMsg(topic, str) {
   return new Promise(resolve => {
     console.log(str);
-    comm.send(topic, str).then(resolve);
+    //comm.send(topic, str).then(resolve); // can forward error to MQTT broker
+    resolve();
   });
 }
 
@@ -250,11 +266,11 @@ const rl = readline.createInterface({
 
 // SIGINT handler
 process.once('SIGINT', function(code) {
-  showMsg("info", "Gateway encountered SIGINT. Exiting.").then(() => {port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGINT")});
+  showMsg("info", "Gateway encountered SIGINT. Exiting.").then(() => {port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGINT")}).catch((err) => comm.end("SIGINT"));
 });
 // SIGTERM handler
 process.once('SIGTERM', function(code) {
-  showMsg("info", "Gateway encountered SIGTERM. Exiting.").then(() => {port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGTERM")});
+  showMsg("info", "Gateway encountered SIGTERM. Exiting.").then(() => {port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGTERM")}).catch((err) => comm.end("SIGTERM"));
 });
 
 // Initiate comm
@@ -264,8 +280,8 @@ comm.startMQTT();
 // Start program
 process.stdout.write("\033[s"); // save cursor position
 portFinder.init(rl, showMsg, comm.send, consoleHandler);
-portFinder.findPorts(main);
-/*if (gateway.isServer) { // TODO make tests with Mocha
+portFinder.findPorts().then(main);
+/*if (gateway.isServer) { // TODO make automated tests with Mocha
   unwrap(Buffer.from("abevent:UP")).then(console.log).catch(console.error);
 } else {
   let fun = async () => {

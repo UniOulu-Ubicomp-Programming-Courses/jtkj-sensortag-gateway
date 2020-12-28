@@ -2,7 +2,7 @@
  * @file config.js
  * @brief Configuration for gateway.js
  * @author Vili Pelttari
- * @date 27.10.2020
+ * @date 28.12.2020
  */
 const util = require("./lib/util.js");
 var gateway = {};
@@ -19,12 +19,14 @@ gateway.uart = {};
 gateway.uart.txlength = 17;
 gateway.uart.baudRate = 9600;
 
-// Delimiter parser
+// UART message parser type
 gateway.uart.pipe = "delimiter";
+//gateway.uart.pipe = "length";
+
+// Delimiter parser
 gateway.uart.delim = "\x00";
 
 // Length parser
-//gateway.uart.pipe = "length";
 gateway.uart.rxlength = 82;
 
 gateway.ports = {};
@@ -34,10 +36,23 @@ gateway.ports.maxTries = 5;
 // Mutes the 'Broker unreachable' warning if it is spammed
 gateway.muteConnectionError = false;
 
-gateway.topics = [ // for SensorTag data topics
+gateway.topics = [ // All possible SensorTag data topics
   "event",
   "sensordata",
 ];
+/**
+ * Different data fields to be received via UART.
+ *
+ * Element description: A dictionary with values
+ *  shortName - name in received UART message
+ *  nameInDB  - name to be used when sending the property via MQTT
+ *  topics    - the MQTT topics where this property can be sent to, an array
+ *  forceSend - false or undefined. False when this property alone doesn't cause a MQTT message to
+ *              be sent. Undefined otherwise
+ *  fun       - A Promise-type function with one argument, used to parse the data from the UART
+ *              message. Argument is the data belonging to this property ({shortName}:{argument}).
+ *              Resolve gives the processed data on success, and reject message is shown in terminal on fail.
+ */
 gateway.dataTypes = [{
     shortName: "time",
     nameInDB: "timestamp",
@@ -48,7 +63,7 @@ gateway.dataTypes = [{
       if (isNaN(a)) reject("Error: Non-numeric timestamp: " + d);
       resolve(a);
     }),
-  }, { // TODO ID must be in the message!
+  }, {
     shortName: "id",
     nameInDB: "sensortagID",
     topics: ["event", "sensordata"],
@@ -65,7 +80,7 @@ gateway.dataTypes = [{
     shortName: "event",
     nameInDB: "movement",
     topics: ["event"],
-    forceSend: true,
+    // forceSend not set to false (undefined)
     fun: d => new Promise((resolve, reject) => {
       if (["UP", "DOWN", "LEFT", "RIGHT"].includes(d.trim())) resolve(d.trim());
       else reject("Error: Event name not recognized: " + d);
@@ -77,7 +92,6 @@ gateway.dataTypes = [{
     shortName: "temp",
     nameInDB: "temperature",
     topics: ["sensordata"],
-    forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       let a = Number.parseFloat(d);
       if (isNaN(a)) reject("Error: Non-numeric temperature: " + d);
@@ -87,7 +101,6 @@ gateway.dataTypes = [{
     shortName: "humid",
     nameInDB: "humidity",
     topics: ["sensordata"],
-    forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       let a = Number.parseFloat(d);
       if (isNaN(a)) reject("Error: Non-numeric humidity: " + d);
@@ -97,7 +110,6 @@ gateway.dataTypes = [{
     shortName: "press",
     nameInDB: "pressure",
     topics: ["sensordata"],
-    forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       let a = Number.parseFloat(d);
       if (isNaN(a)) reject("Error: Non-numeric pressure: " + d);
@@ -107,7 +119,6 @@ gateway.dataTypes = [{
     shortName: "light",
     nameInDB: "lightIntensity",
     topics: ["sensordata"],
-    forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       let a = Number.parseFloat(d);
       if (isNaN(a)) reject("Error: Non-numeric light intensity: " + d);
@@ -117,7 +128,6 @@ gateway.dataTypes = [{
     shortName: "accx",
     nameInDB: "accx",
     topics: ["sensordata"],
-    forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       let a = Number.parseFloat(d);
       if (isNaN(a)) reject("Error: Non-numeric acceleration (x): " + d);
@@ -127,7 +137,6 @@ gateway.dataTypes = [{
     shortName: "accy",
     nameInDB: "accy",
     topics: ["sensordata"],
-    forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       let a = Number.parseFloat(d);
       if (isNaN(a)) reject("Error: Non-numeric acceleration (y): " + d);
@@ -137,7 +146,6 @@ gateway.dataTypes = [{
     shortName: "accz",
     nameInDB: "accz",
     topics: ["sensordata"],
-    forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       let a = Number.parseFloat(d);
       if (isNaN(a)) reject("Error: Non-numeric acceleration (z): " + d);
@@ -147,7 +155,6 @@ gateway.dataTypes = [{
     shortName: "gyrox",
     nameInDB: "gyrox",
     topics: ["sensordata"],
-    forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       let a = Number.parseFloat(d);
       if (isNaN(a)) reject("Error: Non-numeric gyroscope (x): " + d);
@@ -157,7 +164,6 @@ gateway.dataTypes = [{
     shortName: "gyroy",
     nameInDB: "gyroy",
     topics: ["sensordata"],
-    forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       let a = Number.parseFloat(d);
       if (isNaN(a)) reject("Error: Non-numeric gyroscope (y): " + d);
@@ -167,7 +173,6 @@ gateway.dataTypes = [{
     shortName: "gyroz",
     nameInDB: "gyroz",
     topics: ["sensordata"],
-    forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       let a = Number.parseFloat(d);
       if (isNaN(a)) reject("Error: Non-numeric gyroscope (z): " + d);
@@ -176,6 +181,8 @@ gateway.dataTypes = [{
   }
 ];
 
+// Server settings:
+
 gateway.server = {};
 gateway.server.baudRate = 57600;
 gateway.server.pipe = "length";
@@ -183,6 +190,9 @@ gateway.isServer = false;
 
 gateway.debugMode = false;
 
+// TODO maybe disable terminal clearing in server mode? It would function as a log
+
+// Parse command line arguments that change values defined here
 util.parseArgv(gateway);
 
 module.exports = gateway;
