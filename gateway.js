@@ -2,7 +2,7 @@
  * @file gateway.js
  * @brief UART 2-way communication handler for SensorTags
  * @author Vili Pelttari
- * @date 28.12.2020
+ * @date 12.02.2021
  *
  * Dependencies (npm):
  *    serialport
@@ -21,6 +21,7 @@
  *
  * Windows: Set Quick Edit Mode and Insert Mode off in running terminal. This stops sleeping
  * process.
+ *
  */
 const
   ByteLength = require("@serialport/parser-byte-length");
@@ -36,6 +37,7 @@ const
 
 let port; // the serial port after it has been found and connected to
 
+let hbTime = 0; // last time the heartbeat was responded to
 let responded = false;
 /**
  * @brief The main program. Handles UART communication and the finicky ByteLength parser
@@ -46,8 +48,7 @@ let responded = false;
  * out of sync after a stable connection has been established (add logic to port.on('data')).
  */
 function main(path) {
-  let parser;
-  //port = serial;
+  let parser, heartbeatService;
   port = new SerialPort(path, {baudRate: gateway.uart.baudRate}, function(err) {
     if (err === null) return;
     showMsg("error", "Bad port: " + err.message);
@@ -65,6 +66,11 @@ function main(path) {
     return;
   }
 
+  if (gateway.isServer) {
+    hbTime = Date.now();
+    heartbeatService = setInterval(heartbeat, gateway.heartbeatInterval); // check ServerTag every minute
+  }
+
   port.on("close", function(err) { // disconnection detection is slow on some devices
     if (err != null && err.disconnected) {
       showMsg("error", "The SensorTag server disconnected from USB! Please reconnect.");
@@ -76,6 +82,7 @@ function main(path) {
         process.stdout.write("\033[2J\033[1H\033[s"); // clear console, move cursor to first line, save position
         responded = false;
       }
+      if (gateway.isServer) clearInterval(heartbeatService);
       parser.destroy();
       portFinder.findPorts().then(main); // retry connection
       return; // leave portfinder to searching and exit main meanwhile
@@ -96,6 +103,17 @@ function main(path) {
       unwrap(data).then(comm.sendMsgs).catch(console.error);
     });
   });
+}
+
+/**
+ * @brief Check and send the heartbeat query. Used to check if the ServerTag has crashed
+ */
+function heartbeat() {
+  let now = Date.now();
+  if (gateway.heartbeatInterval*1.5 < now - hbTime && now - hbTime < gateway.heartbeatInterval*2.5) {
+    showMsg("error", "Error: Heartbeat: The ServerTag has possibly crashed!");
+  }
+  uartWrite({str: "\x00\x00\x01HB", internal: true}, false);
 }
 
 /**
@@ -147,20 +165,29 @@ function unwrap(data) {
     if (gateway.isServer) {
       // if in server use, the senderAddr is given in two bytes in the beginning of the message
       addr = ("0000" + data.readUInt16LE().toString(16)).slice(-4);
+      if (addr == "fefe" && data.slice(2).toString().replace(/\x00/g, '') == "\x01HB") {
+        let now = Date.now();
+        if (gateway.heartbeatInterval*1.5 < now - hbTime)
+          showMsg("info", "Heartbeat: ServerTag reconnected.");
+        hbTime = now;
+        resolve({});
+        return;
+      }
       data = "id:" + addr + "," + data.slice(2).toString(); // represent addr in common form
     } else data = data.toString();
     console.log(">", data.trim()); // show parsed data in terminal
     tokens = data.split(",");
-    for (const token of tokens) {
+    for (const token of tokens) { // TODO possibly split this function here
       pair = token.split(":").map(d => d.trim()); // pair = [name, value]
-      dtype = gateway.dataTypes.find(type => type.shortName == pair[0]);
+      dtype = gateway.dataTypes.find(type => type.shortName == pair[0].replace(/\x00/g, ''));
       if (dtype != undefined) {
-        await dtype.fun(pair[1].replace(/\x00/g, '')).then(
+        await dtype.fun(pair.length == 2 ? pair[1].replace(/\x00/g, '') : undefined).then(
           d => {
+            if (d.sendResponse) { uartWrite({addr: addr, str: d.sendResponse}); return; }
             for (const table of dtype.topics) {
-              if (dtype.forceSend != false && !sends.includes(table)) sends.push(table);
-              if (!(table in resultDicts)) resultDicts[table] = {};
-              resultDicts[table][dtype.nameInDB] = d;
+                if (dtype.forceSend != false && !sends.includes(table)) sends.push(table);
+                if (!(table in resultDicts)) resultDicts[table] = {};
+                resultDicts[table][dtype.nameInDB] = d;
             }
           },
           reject /* pass error forward */);
@@ -232,6 +259,10 @@ function uartWrite(msg, publish=true) {
     txBuf.asciiWrite(msg.str);
   }
 
+  if (!port) {
+    showMsg("error", "Sending aborted. SensorTag isn't connected.");
+    return;
+  }
   port.write(txBuf, function(err) {
     if (err) {
       showMsg("error", "UART write error: " + err.message);
@@ -281,6 +312,7 @@ comm.startMQTT();
 process.stdout.write("\033[s"); // save cursor position
 portFinder.init(rl, showMsg, comm.send, consoleHandler);
 portFinder.findPorts().then(main);
+//unwrap(Buffer.from("abping\x00\x00")).then(console.log).catch(console.error);
 /*if (gateway.isServer) { // TODO make automated tests with Mocha
   unwrap(Buffer.from("abevent:UP")).then(console.log).catch(console.error);
 } else {

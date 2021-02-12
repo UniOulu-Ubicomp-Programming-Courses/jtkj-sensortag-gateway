@@ -2,7 +2,7 @@
  * @file config.js
  * @brief Configuration for gateway.js
  * @author Vili Pelttari
- * @date 28.12.2020
+ * @date 12.02.2021
  */
 const util = require("./lib/util.js");
 var gateway = {};
@@ -73,6 +73,14 @@ gateway.dataTypes = [{
         resolve(d);
       } else reject("Error: SensorTag ID has to be 4 hex digits: " + d);
     }),
+  }, {
+      shortName: "ping",
+      nameInDB: "ping",
+      topics: [],
+      forceSend: false,
+      fun: addr => new Promise((resolve, reject) => {
+        resolve({sendResponse: "pong"});
+      }),
   },
 
 
@@ -80,7 +88,7 @@ gateway.dataTypes = [{
     shortName: "event",
     nameInDB: "movement",
     topics: ["event"],
-    // forceSend not set to false (undefined)
+    // forceSend not set to false (undefined), meaning this will force a send
     fun: d => new Promise((resolve, reject) => {
       if (["UP", "DOWN", "LEFT", "RIGHT"].includes(d.trim())) resolve(d.trim());
       else reject("Error: Event name not recognized: " + d);
@@ -187,6 +195,9 @@ gateway.server = {};
 gateway.server.baudRate = 57600;
 gateway.server.pipe = "length";
 gateway.isServer = false;
+
+// Interval between checking if the ServerTag has crashed, in milliseconds
+gateway.heartbeatInterval = 15000;
 
 gateway.debugMode = false;
 
