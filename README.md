@@ -2,6 +2,8 @@
 
 Johdatus tietokonejärjestelmiin 2020 / Introduction to computer systems 2020
 
+This enables you to communicate with the JTKJ background system using the Texas Instruments SensorTag(s).
+
 ## Installation 
 
 Dependencies:
