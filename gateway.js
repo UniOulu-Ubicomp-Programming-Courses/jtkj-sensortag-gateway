@@ -32,7 +32,7 @@ const
      gateway = require("./config");
       reader = require("./lib/reader");
         uart = require("./lib/uart");
-        comm = require("./lib/comm");
+        comm = require("./lib/comm-socket");
 
 /**
  * @brief The main program. Handles UART communication
@@ -99,6 +99,18 @@ function main(path) {
   });
 }
 
+function sendDebugMsgs(msg) {
+  let buff = Buffer.concat([Buffer.from([Number.parseInt(debug.id.substr(2), 16), Number.parseInt(debug.id.substr(0, 2), 16)]), Buffer.from(msg)]);
+  unwrap(buff).then(comm.sendMsgs).catch(console.error);
+}
+
+function sendSensorData() {
+  debug.k--;
+  sendDebugMsgs("press:" + (debug.k % 10) + ((debug.k == 0) ? ",session:end" : ""));
+
+  if (debug.k <= 0) clearInterval(debug.sensorData);
+}
+
 /**
  * @brief Handles the console/terminal input from user when the UART is connected
  * @param line The line read from stdin
@@ -114,6 +126,38 @@ function consoleHandler(line) {
     } else if (line == ".unmute") {
       gateway.muteConnectionError = false;
       console.log("Subscriber connection errors unmuted.\n")
+    } else if (line.startsWith(".setid ")) {
+      if (line.length = 11) {
+        debug.id = line.substring(7)
+        console.log(`Set Debug ID to ${debug.id}.`);
+      } else console.log(`Could not set Debug ID to ${line.substring(7)}`);
+    } else if (line.startsWith(".eat ")) {
+      let d = Number(line.substring(5));
+      if (isNaN(d)) {
+        console.log("Could not interpret the command '" + line + "'");
+        return;
+      }
+      sendDebugMsgs("EAT:" + d);
+    } else if (line.startsWith(".exercise ")) {
+      let d = Number(line.substring(5));
+      if (isNaN(d)) {
+        console.log("Could not interpret the command '" + line + "'");
+        return;
+      }
+      sendDebugMsgs("EXERCISE:" + d);
+    } else if (line.startsWith(".pet ")) {
+      let d = Number(line.substring(5));
+      if (isNaN(d)) {
+        console.log("Could not interpret the command '" + line + "'");
+        return;
+      }
+      sendDebugMsgs("PET:" + d);
+    } else if (line.startsWith(".send ")) {
+      sendDebugMsgs(line.substr(6));
+    } else if (line == ".sendSensors") {
+      debug.k = 40;
+      sendDebugMsgs("session:start");
+      debug.sensorData = setInterval(sendSensorData, 100);
     } else if (line == ".help") {
       let sendInstruction = gateway.isServer ?
           "\nAny message not starting with '.' will be sent to address 0xffff."
@@ -166,33 +210,21 @@ process.once('SIGTERM', function(code) {
 });
 
 // Start MQTT
-comm.startMQTT();
+comm.startComm();
 // Start program
-process.stdout.write("\033[s"); // save cursor position
-portFinder.init(rl, showMsg, consoleHandler);
-portFinder.findPorts().then(main);
+//process.stdout.write("\033[s"); // save cursor position
+//portFinder.init(rl, showMsg, consoleHandler);
+//portFinder.findPorts().then(main);
 
-/*unwrap(Buffer.from("adping,event:UP\x00\x00")).then(console.log).catch(console.error);
+//unwrap(Buffer.from("adping,event:UP\x00\x00")).then(console.log).catch(console.error);
+let debug = {id: "0123"};
+rl.on("line", consoleHandler);
 if (gateway.isServer) { // TODO make automated tests with Mocha
-  unwrap(Buffer.from("abevent:UP")).then(console.log).catch(console.error);
+  sendDebugMsgs("EAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25");
+  //unwrap(Buffer.from("abEAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25,ping")).then(comm.sendMsgs).catch(console.error);
 } else {
   let fun = async () => {
-    await unwrap(Buffer.from("id:0123,evet:Up\r\n")).then(comm.sendMsgs).catch(console.error);
-    await unwrap(Buffer.from("id:0123,event:Up\r\n")).then(comm.sendMsgs).catch(console.error);
-    await unwrap(Buffer.from("event:UP,light:32\r\n")).then(console.log).catch(console.error);
-    await unwrap(Buffer.from("id:0123,ping,event:UP,light:32\r\n")).then(console.log).catch(console.error);
-    await unwrap(Buffer.from("id:0100,session:start,press:101325,time:2\r\n")).then(comm.sendMsgs).catch(console.error);
-    await unwrap(Buffer.from("id:0100,event:UP,press:101326,time:3,light:208,session:end\r\n")).then(comm.sendMsgs).catch(console.error);
-    await unwrap(Buffer.from("id:0100,event:UP,time:15\r\n")).then(comm.sendMsgs).catch(console.error);
-    await unwrap(Buffer.from("id:6261,event:UP,ping\r\n")).then(comm.sendMsgs).catch(console.error);
+    await unwrap(Buffer.from("id:0123,EAT:3\r\n")).then(console.log).catch(console.error);
   }
   fun();
-}*/
-
-/*console.log(
-  util.decodeEscapedBuffer(Buffer.from([65, 241, 241, 240, 240, 66, 240, 240, 241, 67, 240, 241]))
-);
-
-console.log(
-  util.decodeEscapedBuffer(Buffer.from([65, 66, 240, 240, 240, 241, 67, 240, 241]))
-);*/
+}

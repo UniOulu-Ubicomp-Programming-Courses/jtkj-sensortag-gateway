@@ -16,6 +16,12 @@ gateway.mqtt.options = {
   rejectUnauthorized: false
 };
 
+gateway.socket = {};
+gateway.socket.host = "http://10.2.18.154:3000/login";
+gateway.socket.options = {
+  reconnect: true
+};
+
 // XXX: There are gateway server related values at the bottom
 gateway.uart = {};
 gateway.uart.txlength = 17;
@@ -59,6 +65,8 @@ gateway.maxSessionRows = 4500;
 
 gateway.topics = [ // All possible SensorTag data topics. Dummy topics are used for gateway commands
   "event",
+  "tamaActions",
+  "additionalMessages",
   "sensordata",
   "commands" // dummy topic for internal commands
 ];
@@ -115,15 +123,71 @@ gateway.dataTypes = [{
   },
 
 
-
   {
-    shortName: "event",
-    nameInDB: "movement",
-    topics: ["event"],
-    // forceSend not set to false (undefined), meaning this will force a send
+    shortName: "EAT",
+    nameInDB: "eat",
+    topics: ["tamaActions"],
+    forceSend: false,
     fun: d => new Promise((resolve, reject) => {
-      if (["UP", "DOWN", "LEFT", "RIGHT"].includes(d)) resolve(d);
-      else reject("Error: Event name not recognized: " + d);
+      let a = Number(d);
+      if (isNaN(a) || d == '') reject("Error: Non-numeric EAT increment: " + d);
+      if (!Number.isFinite(a)) reject("Error: Tamagotchi cannot EAT the amount: " + a);
+      resolve([a, 0, 0]);
+    }),
+  },
+  {
+    shortName: "EXERCISE",
+    nameInDB: "exercise",
+    topics: ["tamaActions"],
+    forceSend: false,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number(d);
+      if (isNaN(a) || d == '') reject("Error: Non-numeric EXERCISE increment: " + d);
+      if (!Number.isFinite(a)) reject("Error: Tamagotchi cannot EXERCISE the amount: " + a);
+      resolve([0, a, 0]);
+    }),
+  },
+  {
+    shortName: "PET",
+    nameInDB: "pet",
+    topics: ["tamaActions"],
+    forceSend: false,
+    fun: d => new Promise((resolve, reject) => {
+      let a = Number(d);
+      if (isNaN(a) || d == '') reject("Error: Non-numeric PET increment: " + d);
+      if (!Number.isFinite(a)) reject("Error: Tamagotchi cannot be PET the amount: " + a);
+      resolve([0, 0, a]);
+    }),
+  },
+  {
+    shortName: "ACTIVATE",
+    nameInDB: "ACTIVATE",
+    topics: ["tamaActions"],
+    forceSend: false,
+    fun: d => new Promise((resolve, reject) => {
+      let a = d.split(";").map(k => Number(k));
+      if (a.length != 3) reject("Error: ACTIVATE needs three arguments.");
+      if (a.some(k => isNaN(k)) || d == '') reject("Error: Non-numeric ACTIVATE increment: " + d);
+      if (a.some(k => Number.isFinite(a))) reject("Error: Tamagotchi cannot be ACTIVATEd the amounts: " + d);
+      resolve(a);
+    }),
+  },
+  {
+    shortName: "MSG1",
+    nameInDB: "msg1",
+    topics: ["additionalMessages"],
+    forceSend: true,
+    fun: d => new Promise((resolve, reject) => {
+      resolve(d);
+    }),
+  },
+  {
+    shortName: "MSG2",
+    nameInDB: "msg2",
+    topics: ["additionalMessages"],
+    forceSend: false,
+    fun: d => new Promise((resolve, reject) => {
+      resolve(d);
     }),
   },
 
