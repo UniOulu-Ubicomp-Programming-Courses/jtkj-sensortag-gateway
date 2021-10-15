@@ -220,7 +220,7 @@ comm.startComm();
 let debug = {id: "0123"};
 rl.on("line", consoleHandler);
 if (gateway.isServer) { // TODO make automated tests with Mocha
-  sendDebugMsgs("EAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25");
+  //sendDebugMsgs("EAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25");
   //unwrap(Buffer.from("abEAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25,ping")).then(comm.sendMsgs).catch(console.error);
 } else {
   let fun = async () => {

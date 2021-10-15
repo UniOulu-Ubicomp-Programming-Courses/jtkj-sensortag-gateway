@@ -17,9 +17,10 @@ gateway.mqtt.options = {
 };
 
 gateway.socket = {};
-gateway.socket.host = "http://10.2.18.154:3000/login";
+gateway.socket.host = "http://localhost:8100";
 gateway.socket.options = {
-  reconnect: true
+  reconnect: true,
+  path: "/api/v1/databaseconnector/sockets"
 };
 
 // XXX: There are gateway server related values at the bottom
