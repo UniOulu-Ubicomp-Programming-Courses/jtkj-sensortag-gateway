@@ -1,8 +1,8 @@
 {
-  "name": "jtkj-gateway",
+  "name": "jtkj-interface",
   "version": "1.0.0",
   "description": "",
-  "main": "gateway.js",
+  "main": "interface.js",
   "dependencies": {
     "moment": "^2.29.1",
     "mqtt": "^4.2.3",
@@ -12,7 +12,7 @@
     "socket.io-client": "^4.2.0"
   },
   "scripts": {
-    "start": "node gateway && exit 0",
+    "start": "node interface && exit 0",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

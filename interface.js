@@ -1,5 +1,5 @@
 /**
- * @file gateway.js
+ * @file interface.js
  * @brief UART 2-way communication handler for SensorTags
  * @author Vili Pelttari
  *
@@ -17,7 +17,7 @@
  *
  * Usage: Plug in a SensorTag via USB and run this file in powershell or similar with Node.js.
  *  - run powershell
- *  - navigate to this folder and run command "npm install; node gateway"
+ *  - navigate to this folder and run command "npm install; node interface"
  *
  * Windows: Set Quick Edit Mode and Insert Mode off in running terminal. This stops the process
  * from sleeping.
@@ -29,7 +29,7 @@ const
   portFinder = require("./lib/portFinder");
   SerialPort = require("serialport");
     readline = require("readline");
-     gateway = require("./config");
+     interface = require("./config");
       reader = require("./lib/reader");
         uart = require("./lib/uart");
         comm = require("./lib/comm-socket");
@@ -44,7 +44,7 @@ const
  */
 function main(path) {
   let parser, heartbeatService;
-  gateway.port = new SerialPort(path, {baudRate: gateway.uart.baudRate}, function(err) {
+  interface.port = new SerialPort(path, {baudRate: interface.uart.baudRate}, function(err) {
     if (err === null) return;
     showMsg("error", "Bad port: " + err.message);
     portFinder.findPorts().then(main);
@@ -52,22 +52,22 @@ function main(path) {
   });
 
   try {
-    if (gateway.uart.pipe == "length"){
-      parser = gateway.port.pipe(new ByteLength({length: gateway.uart.rxlength}));
+    if (interface.uart.pipe == "length"){
+      parser = interface.port.pipe(new ByteLength({length: interface.uart.rxlength}));
     } else {
-      parser = gateway.port.pipe(new Delimiter({delimiter: gateway.uart.delim}));
+      parser = interface.port.pipe(new Delimiter({delimiter: interface.uart.delim}));
     }
   } catch(e) {
     showMsg("error", "Error opening port parser: " + e.message);
     return;
   }
 
-  if (gateway.isServer) {
+  if (interface.isServer) {
     uart.hbTime = Date.now();
-    heartbeatService = setInterval(uart.heartbeat, gateway.heartbeatInterval); // check ServerTag every 15 seconds
+    heartbeatService = setInterval(uart.heartbeat, interface.heartbeatInterval); // check ServerTag every 15 seconds
   }
 
-  gateway.port.on("close", (err) => { // disconnection detection is slow on some devices
+  interface.port.on("close", (err) => { // disconnection detection is slow on some devices
     if (err != null && err.disconnected) {
       showMsg("error", "The SensorTag server disconnected from USB! Please reconnect.");
     } else if (err != null) {
@@ -78,7 +78,7 @@ function main(path) {
         process.stdout.write("\033[2J\033[1H\033[s"); // clear console, move cursor to first line, save position
         uart.responded = false;
       }
-      if (gateway.isServer) clearInterval(heartbeatService);
+      if (interface.isServer) clearInterval(heartbeatService);
       parser.destroy();
       portFinder.findPorts().then(main); // retry connection
       return; // leave portfinder to searching and exit main meanwhile
@@ -86,10 +86,10 @@ function main(path) {
   });
 
   // Main functionality after connection is established:
-  gateway.port.on("open", () => {
+  interface.port.on("open", () => {
     let dict = [], topic = "";
     showMsg("info", "UART connection opened.");
-    if (gateway.isServer) setTimeout(uart.sendChallenge, 1000);
+    if (interface.isServer) setTimeout(uart.sendChallenge, 1000);
     else uart.responded = true;
     parser.on("data", function(data) {
       if (!uart.responded && !uart.parseChallenge(data)) return;
@@ -101,7 +101,7 @@ function main(path) {
 
 function sendDebugMsgs(msg) {
   let buff;
-  if (gateway.isServer) {
+  if (interface.isServer) {
     buff = Buffer.concat([Buffer.from([Number.parseInt(debug.id.substr(2), 16), Number.parseInt(debug.id.substr(0, 2), 16)]), Buffer.from(msg)]);
   } else {
     buff = Buffer.concat([Buffer.from("id:" + debug.id + ","), Buffer.from(msg)]);
@@ -123,48 +123,48 @@ function sendSensorData() {
 function consoleHandler(line) {
   if (line[0] == '.') {
     if (line == ".reconnect") {
-      gateway.port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}});
+      interface.port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}});
       console.log("\n");
     } else if (line == ".mute") {
-      gateway.muteConnectionError = true;
+      interface.muteConnectionError = true;
       console.log("Subscriber connection errors muted.\n")
     } else if (line == ".unmute") {
-      gateway.muteConnectionError = false;
+      interface.muteConnectionError = false;
       console.log("Subscriber connection errors unmuted.\n")
-    } else if (gateway.debugMode && line.startsWith(".setid ")) {
+    } else if (interface.debugMode && line.startsWith(".setid ")) {
       if (line.length = 11) {
         debug.id = line.substring(7)
         console.log(`Set Debug ID to ${debug.id}.`);
       } else console.log(`Could not set Debug ID to ${line.substring(7)}`);
-    } else if (gateway.debugMode && line.startsWith(".eat ")) {
+    } else if (interface.debugMode && line.startsWith(".eat ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
         console.log("Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("EAT:" + d);
-    } else if (gateway.debugMode && line.startsWith(".exercise ")) {
+    } else if (interface.debugMode && line.startsWith(".exercise ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
         console.log("Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("EXERCISE:" + d);
-    } else if (gateway.debugMode && line.startsWith(".pet ")) {
+    } else if (interface.debugMode && line.startsWith(".pet ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
         console.log("Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("PET:" + d);
-    } else if (gateway.debugMode && line.startsWith(".send ")) {
+    } else if (interface.debugMode && line.startsWith(".send ")) {
       sendDebugMsgs(line.substr(6));
-    } else if (gateway.debugMode && line == ".sendSensors") {
+    } else if (interface.debugMode && line == ".sendSensors") {
       debug.k = 40;
       sendDebugMsgs("session:start");
       debug.sensorData = setInterval(sendSensorData, 100);
     } else if (line == ".help") {
-      let sendInstruction = gateway.isServer ?
+      let sendInstruction = interface.isServer ?
           "\nAny message not starting with '.' will be sent to address 0xffff."
             + "\nAddress can be specified using XXXX# prefix.\n"
           :
@@ -174,12 +174,12 @@ function consoleHandler(line) {
         "  .mute        Mute the 'Broker unreachable' warning\n" +
         "  .unmute      Unmute the 'Broker unreachable' warning\n" + sendInstruction);
     } else console.log("Unknown command");
-  } else if (!gateway.isServer) { // not server, so all input is sent raw (internal: true)
+  } else if (!interface.isServer) { // not server, so all input is sent raw (internal: true)
     uart.uartWrite({internal: true, str: line});
   } else if (/[0-9a-f]{4}#.+/i.test(line)) { // check if the sensortag address is given in the beginning as 6261#message for sending "message" to id:ab
     let parts = line.split(/#(.+)/, 2);
     uart.uartWrite({addr: parts[0], str: parts[1]});
-  } else if (line.length > 0) { // gateway is server, so send all other data as broadcast messages
+  } else if (line.length > 0) { // interface is server, so send all other data as broadcast messages
     uart.uartWrite({addr: "ffff", str: line});
   }
 }
@@ -207,11 +207,11 @@ const rl = readline.createInterface({
 
 // SIGINT handler
 process.once('SIGINT', function(code) {
-  showMsg("info", "Gateway encountered SIGINT. Exiting.").then(() => {gateway.port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGINT")}).catch((err) => comm.end("SIGINT"));
+  showMsg("info", "Gateway encountered SIGINT. Exiting.").then(() => {interface.port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGINT")}).catch((err) => comm.end("SIGINT"));
 });
 // SIGTERM handler
 process.once('SIGTERM', function(code) {
-  showMsg("info", "Gateway encountered SIGTERM. Exiting.").then(() => {gateway.port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGTERM")}).catch((err) => comm.end("SIGTERM"));
+  showMsg("info", "Gateway encountered SIGTERM. Exiting.").then(() => {interface.port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGTERM")}).catch((err) => comm.end("SIGTERM"));
 });
 
 let debug = {id: "0123"};
@@ -219,20 +219,20 @@ let debug = {id: "0123"};
 // Start MQTT
 comm.startComm();
 // Start program
-if (!gateway.debugMode) {
+if (!interface.debugMode) {
   process.stdout.write("\033[s"); // save cursor position
   portFinder.init(rl, showMsg, consoleHandler);
   portFinder.findPorts().then(main);
 } else {
   //unwrap(Buffer.from("adping,event:UP\x00\x00")).then(console.log).catch(console.error);
   rl.on("line", consoleHandler);
-  if (gateway.isServer) { // TODO make automated tests with Mocha
+  if (interface.isServer) { // TODO make automated tests with Mocha
     //sendDebugMsgs("EAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25");
     //unwrap(Buffer.from("abEAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25,ping")).then(comm.sendMsgs).catch(console.error);
   } else {
-    let fun = async () => {
-      await unwrap(Buffer.from("id:0123,EAT:3\r\n")).then(console.log).catch(console.error);
-    }
-    fun();
+    //let fun = async () => {
+      //await unwrap(Buffer.from("id:0123,EAT:3\r\n")).then(console.log).catch(console.error);
+    //}
+    //fun();
   }
 }

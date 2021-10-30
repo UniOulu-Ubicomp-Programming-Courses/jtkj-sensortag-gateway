@@ -1,53 +1,53 @@
 /**
  * @file config.js
- * @brief Configuration for gateway.js
+ * @brief Configuration for interface.js
  * @author Vili Pelttari
  */
 const util = require("./lib/util.js");
 const fs = require("fs");
-var gateway = {};
+var interface = {};
 
-gateway.mqtt = {};
-gateway.mqtt.host = 'mqtt://localhost:10311';
-gateway.mqtt.options = {
+interface.mqtt = {};
+interface.mqtt.host = 'mqtt://localhost:10311';
+interface.mqtt.options = {
   ca: fs.readFileSync('certs/ca.crt'),
   key: fs.readFileSync('certs/mqttClientKey.key'),
   cert: fs.readFileSync('certs/mqttClientKey.crt'),
   rejectUnauthorized: false
 };
 
-gateway.socket = {};
-gateway.socket.host = "http://localhost:8100";
-gateway.socket.options = {
+interface.socket = {};
+interface.socket.host = "http://localhost:8100";
+interface.socket.options = {
   reconnect: true,
   path: "/api/v1/databaseconnector/sockets"
 };
 
-// XXX: There are gateway server related values at the bottom
-gateway.uart = {};
-gateway.uart.txlength = 17;
-gateway.uart.baudRate = 9600;
+// XXX: There are interface server related values at the bottom
+interface.uart = {};
+interface.uart.txlength = 17;
+interface.uart.baudRate = 9600;
 
 // UART message parser type
-gateway.uart.pipe = "delimiter";
-//gateway.uart.pipe = "length";
+interface.uart.pipe = "delimiter";
+//interface.uart.pipe = "length";
 
 // Delimiter parser
-gateway.uart.delim = "\x00";
+interface.uart.delim = "\x00";
 
 // Length parser
-gateway.uart.rxlength = 82;
+interface.uart.rxlength = 82;
 
-gateway.ports = {};
-gateway.ports.autofind = true;
-gateway.ports.maxTries = 5;
+interface.ports = {};
+interface.ports.autofind = true;
+interface.ports.maxTries = 5;
 
 // Mutes the 'Broker unreachable' warning if it is spammed
-gateway.muteConnectionError = false;
+interface.muteConnectionError = false;
 
 // Time after which connected addresses aren't remembered, in milliseconds.
-// Used for limiting reply messages from being broadcast from multiple gateways
-gateway.connectedAddressTimeout = 10000;
+// Used for limiting reply messages from being broadcast from multiple interfaces
+interface.connectedAddressTimeout = 10000;
 
 // How many rows of sensor data will be gathered from any SensorTag.
 /* Value is an approximation: 
@@ -62,9 +62,9 @@ gateway.connectedAddressTimeout = 10000;
  *  50 milliseconds. If the maximum number of rows is exceeded, extra rows are not added to sensor
  *  data, and session:end still sends the so-far accumulated data to the database.
  */
-gateway.maxSessionRows = 4500;
+interface.maxSessionRows = 4500;
 
-gateway.topics = [ // All possible SensorTag data topics. Dummy topics are used for gateway commands
+interface.topics = [ // All possible SensorTag data topics. Dummy topics are used for interface commands
   "event",
   "tamaActions",
   "additionalMessages",
@@ -84,7 +84,7 @@ gateway.topics = [ // All possible SensorTag data topics. Dummy topics are used 
  *              message. Argument is the data belonging to this property ({shortName}:{argument}).
  *              Resolve gives the processed data on success, and reject message is shown in terminal on fail.
  */
-gateway.dataTypes = [{
+interface.dataTypes = [{
     shortName: "time",
     nameInDB: "timeStamp",
     topics: ["event", "sensordata"],
@@ -108,7 +108,7 @@ gateway.dataTypes = [{
     shortName: "ping",
     nameInDB: "ping",
     topics: ["commands"], // dummy topic
-    forceSend: false, // don't send gateway-related data to MQTT
+    forceSend: false, // don't send interface-related data to MQTT
     fun: d => new Promise((resolve, reject) => {
       resolve("pong");
     }),
@@ -298,26 +298,26 @@ gateway.dataTypes = [{
 
 // Server settings:
 
-gateway.server = {};
-gateway.server.baudRate = 57600;
-gateway.server.pipe = "delimiter";
-gateway.server.delim = Buffer.of(242);
-gateway.isServer = false;
+interface.server = {};
+interface.server.baudRate = 57600;
+interface.server.pipe = "delimiter";
+interface.server.delim = Buffer.of(242);
+interface.isServer = false;
 
 // Interval between checking if the ServerTag has crashed, in milliseconds
 // If this value is changed, please change it also in the ServerTag!
-gateway.heartbeatInterval = 15000;
+interface.heartbeatInterval = 15000;
 
-gateway.debugMode = false;
+interface.debugMode = false;
 
 // TODO maybe disable terminal clearing in server mode? It would function as a log
 
 // Parse command line arguments that change values defined here
-util.parseArgv(gateway);
+util.parseArgv(interface);
 
 // Global variables
-gateway.connectedAddresses = {};
-gateway.port = undefined; // the serial port after it has been found and connected to
+interface.connectedAddresses = {};
+interface.port = undefined; // the serial port after it has been found and connected to
 
 
-module.exports = gateway;
+module.exports = interface;
