@@ -97,7 +97,7 @@ gateway.dataTypes = [{
   }, { // ID is special. It will be picked in the readDataTokens and forwarded to other functions. TODO experiment if this can be relaxed
     shortName: "id",
     nameInDB: "sensortagID",
-    topics: ["event"],
+    topics: ["event", "additionalMessages"],
     forceSend: false, // Reception doesn't warrant a send on the associated topics
     fun: d => new Promise((resolve, reject) => {
       if (!isNaN(Number("0x" + d)) && d.length <= 4 && d != '') {
