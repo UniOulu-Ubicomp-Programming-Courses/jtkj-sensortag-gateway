@@ -100,7 +100,12 @@ function main(path) {
 }
 
 function sendDebugMsgs(msg) {
-  let buff = Buffer.concat([Buffer.from([Number.parseInt(debug.id.substr(2), 16), Number.parseInt(debug.id.substr(0, 2), 16)]), Buffer.from(msg)]);
+  let buff;
+  if (gateway.isServer) {
+    buff = Buffer.concat([Buffer.from([Number.parseInt(debug.id.substr(2), 16), Number.parseInt(debug.id.substr(0, 2), 16)]), Buffer.from(msg)]);
+  } else {
+    buff = Buffer.concat([Buffer.from("id:" + debug.id + ","), Buffer.from(msg)]);
+  }
   unwrap(buff).then(comm.sendMsgs).catch(console.error);
 }
 
@@ -126,35 +131,35 @@ function consoleHandler(line) {
     } else if (line == ".unmute") {
       gateway.muteConnectionError = false;
       console.log("Subscriber connection errors unmuted.\n")
-    } else if (line.startsWith(".setid ")) {
+    } else if (gateway.debugMode && line.startsWith(".setid ")) {
       if (line.length = 11) {
         debug.id = line.substring(7)
         console.log(`Set Debug ID to ${debug.id}.`);
       } else console.log(`Could not set Debug ID to ${line.substring(7)}`);
-    } else if (line.startsWith(".eat ")) {
+    } else if (gateway.debugMode && line.startsWith(".eat ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
         console.log("Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("EAT:" + d);
-    } else if (line.startsWith(".exercise ")) {
+    } else if (gateway.debugMode && line.startsWith(".exercise ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
         console.log("Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("EXERCISE:" + d);
-    } else if (line.startsWith(".pet ")) {
+    } else if (gateway.debugMode && line.startsWith(".pet ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
         console.log("Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("PET:" + d);
-    } else if (line.startsWith(".send ")) {
+    } else if (gateway.debugMode && line.startsWith(".send ")) {
       sendDebugMsgs(line.substr(6));
-    } else if (line == ".sendSensors") {
+    } else if (gateway.debugMode && line == ".sendSensors") {
       debug.k = 40;
       sendDebugMsgs("session:start");
       debug.sensorData = setInterval(sendSensorData, 100);
@@ -209,22 +214,25 @@ process.once('SIGTERM', function(code) {
   showMsg("info", "Gateway encountered SIGTERM. Exiting.").then(() => {gateway.port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGTERM")}).catch((err) => comm.end("SIGTERM"));
 });
 
+let debug = {id: "0123"};
+
 // Start MQTT
 comm.startComm();
 // Start program
-//process.stdout.write("\033[s"); // save cursor position
-//portFinder.init(rl, showMsg, consoleHandler);
-//portFinder.findPorts().then(main);
-
-//unwrap(Buffer.from("adping,event:UP\x00\x00")).then(console.log).catch(console.error);
-let debug = {id: "0123"};
-rl.on("line", consoleHandler);
-if (gateway.isServer) { // TODO make automated tests with Mocha
-  //sendDebugMsgs("EAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25");
-  //unwrap(Buffer.from("abEAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25,ping")).then(comm.sendMsgs).catch(console.error);
+if (!gateway.debugMode) {
+  process.stdout.write("\033[s"); // save cursor position
+  portFinder.init(rl, showMsg, consoleHandler);
+  portFinder.findPorts().then(main);
 } else {
-  let fun = async () => {
-    await unwrap(Buffer.from("id:0123,EAT:3\r\n")).then(console.log).catch(console.error);
+  //unwrap(Buffer.from("adping,event:UP\x00\x00")).then(console.log).catch(console.error);
+  rl.on("line", consoleHandler);
+  if (gateway.isServer) { // TODO make automated tests with Mocha
+    //sendDebugMsgs("EAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25");
+    //unwrap(Buffer.from("abEAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25,ping")).then(comm.sendMsgs).catch(console.error);
+  } else {
+    let fun = async () => {
+      await unwrap(Buffer.from("id:0123,EAT:3\r\n")).then(console.log).catch(console.error);
+    }
+    fun();
   }
-  fun();
 }
