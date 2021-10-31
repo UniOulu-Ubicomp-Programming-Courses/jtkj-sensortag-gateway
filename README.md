@@ -23,24 +23,6 @@ baudrate with `node interface --help`.
 
 ## Message format
 
-| Key     | Value    | Meaning |
-| ------- |:--------:| ------- |
-| id      | At most 4 hexadecimal characters | SensorTag ID. Must be given when using UART! |
-| EAT     | Integer from 0 to 10 | Feed tamagotchi |
-| PET     | Integer from 0 to 10 | Pet tamagotchi |
-| EXERCISE| Integer from 0 to 10 | Exercise tamagotchi |
-| ACTIVATE| Three integers from 0 to 10 | Feed, Pet and Exercise tamagotchi in a single message. Integers are separated by ';': An example would be "2;0;7". |
-| MSG1    | String | Any text the user wants to show next to the tamagotchi. One of two. |
-| MSG2    | String | Any text the user wants to show next to the tamagotchi. One of two. |
-| time    | Integer | The timestamp of current sensor data row, optional |
-| ping    | | Respond with 'pong' to the sending ID. |
-| session | start/end | Session collects sensor data in the interface. Once the session ends, the data is sent to the database and can be viewed by refreshing the graph. Starting the session when a session is already open will empty the session. |
-
-Sensor data fields are: temp, humid, press, light, ax, ay, az, gx, gy, gz.
-Sensor data is given as a floating point number.
-
-Commas (',') are not supported within values, like MSG1 and MSG2!
-
 Examples:
 
 | Message | Meaning |
@@ -51,3 +33,24 @@ Examples:
 | id:0042,MSG1:Health: ##--- 40%,MSG2:State 2 / Value 2.21 | Set msg1 to "Health: ##--- 40%", and msg2 to "State 2 / Value 2.21". Remember, there can be no commas in the msg values |
 | id:0015,session:start,temp:27.82,session:end,ping | Start a sensor data session, write one temperature value in the session and write it to database. Reply with 'pong' after execution |
 | id:1234,EAT:10,light:208 | Feed tamagotchi 10. Record light level into an open sensor data session, if one exists |
+
+The full description of allowed key-value pairs is described next.
+
+| Key     | Value    | Meaning |
+| ------- |:--------:| ------- |
+| id      | At most 4 hexadecimal characters | SensorTag ID. Must be given when using UART! |
+| EAT     | Integer from 0 to 10 | Feed tamagotchi |
+| PET     | Integer from 0 to 10 | Pet tamagotchi |
+| EXERCISE| Integer from 0 to 10 | Exercise tamagotchi |
+| ACTIVATE| Three integers from 0 to 10 | Feed, Pet and Exercise tamagotchi in a single message. Integers are separated by ';': An example would be "2;0;7" |
+| MSG1    | String | Any text the user wants to show next to the tamagotchi. One of two |
+| MSG2    | String | Any text the user wants to show next to the tamagotchi. One of two |
+| time    | Integer | The timestamp of current sensor data row, optional |
+| ping    | | Respond with 'pong' to the sending ID |
+| session | start/end | Session collects sensor data in the interface. Once the session ends, the data is sent to the database and can be viewed by refreshing the graph. Starting the session when a session is already open will empty the session |
+
+Sensor data fields are: temp, humid, press, light, ax, ay, az, gx, gy, gz.
+Sensor data is given as a floating point number.
+
+Commas (',') are not supported within values, like MSG1 and MSG2!
+
