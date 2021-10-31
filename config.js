@@ -186,7 +186,7 @@ interface.dataTypes = [{
     shortName: "MSG2",
     nameInDB: "msg2",
     topics: ["additionalMessages"],
-    forceSend: false,
+    forceSend: true,
     fun: d => new Promise((resolve, reject) => {
       resolve(d);
     }),
