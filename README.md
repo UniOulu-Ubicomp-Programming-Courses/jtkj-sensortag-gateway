@@ -30,11 +30,11 @@ Examples:
 
 | Message | Meaning |
 | ------- | ------- |
-| id:0023,EAT:8 | Your SensorTag ID is 0023. If the tamagotchi is visible in a browser, feed it 8 times |
-| id:0023,PET:2,EXERCISE:1 | If the tamagotchi is visible in a browser, pet it 2 times and exercise once |
-| id:0123,EXERCISE:2,ping | Exercise tamagotchi by 2. Replies with 'pong' once the command has been executed correctly |
-| id:0042,MSG1:Health: ##--- 40%,MSG2:State 2 / Value 2.21 | Set msg1 to "Health: ##--- 40%", and msg2 to "State 2 / Value 2.21". Remember, there can be no commas in the msg values |
-| id:0015,session:start,temp:27.82,session:end,ping | Start a sensor data session, write one temperature value in the session and write it to database. Reply with 'pong' after execution |
+| id:23,EAT:8 | Your SensorTag ID is 0023. If the tamagotchi is visible in a browser, feed it 8 times |
+| id:23,PET:2,EXERCISE:1 | If the tamagotchi is visible in a browser, pet it 2 times and exercise once |
+| id:123,EXERCISE:2,ping | Exercise tamagotchi by 2. Replies with 'pong' once the command has been executed correctly |
+| id:42,MSG1:Health: ##--- 40%,MSG2:State 2 / Value 2.21 | Set msg1 to "Health: ##--- 40%", and msg2 to "State 2 / Value 2.21". Remember, there can be no commas in the msg values |
+| id:15,session:start,temp:27.82,session:end,ping | Start a sensor data session, write one temperature value in the session and write it to database. Reply with 'pong' after execution |
 | id:1234,ACTIVATE:1;2;3,light:208 | Feed tamagotchi 1, exercise tamagotchi 2, pet tamagotchi 3. Record light level into an open sensor data session, if one exists |
 
 
@@ -50,7 +50,7 @@ The allowed key-value pairs are:
 | MSG1    | String | Any text the user wants to show next to the tamagotchi. One of two |
 | MSG2    | String | Any text the user wants to show next to the tamagotchi. One of two |
 | time    | Integer | The timestamp of current sensor data row, optional |
-| ping    | | Respond with 'pong' to the sending ID |
+| ping    | | Respond with 'pong' to the sending ID, if the message was interpreted without error. Extra 'session:end's are not errors, so ping can be used to reliably end sensor data sessions in weak signal situations |
 | session | start/end | Session collects sensor data in the interface. Once the session ends, the data is sent to the database and can be viewed by refreshing the graph. Starting the session when a session is already open will empty the session |
 
 Sensor data fields are: temp, humid, press, light, ax, ay, az, gx, gy, gz.
@@ -62,7 +62,8 @@ Commas (',') are not supported within values, like MSG1 and MSG2!
 
 All typed text not beginning with a '.' character is sent to the connected SensorTag via UART. This always sends a 50 bytes long zero terminated string, meaning, you can use a fixed size reception buffer, or the delimiter '\0', to receive the UART message. 
 
-The Tamagotchi sends a message 'id,BEEP' from the backend for each value when it is low.
+The Tamagotchi sends a message 'id,BEEP' from the backend for each value when it is low. For example, if the client's SensorTag ID is 0432, this message will be '432,BEEP'. Note the missing leading zeros.
+
 
 ## Usage of the Terminal User Interface
 
