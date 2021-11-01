@@ -28,8 +28,8 @@ const
    Delimiter = require("@serialport/parser-delimiter");
   portFinder = require("./lib/portFinder");
   SerialPort = require("serialport");
+   interface = require("./config");
     readline = require("readline");
-     interface = require("./config");
       reader = require("./lib/reader");
         uart = require("./lib/uart");
         comm = require("./lib/comm-socket");
@@ -94,7 +94,7 @@ function main(path) {
     parser.on("data", function(data) {
       if (!uart.responded && !uart.parseChallenge(data)) return;
       // read the data, send via MQTT on success and show errors in console on failure
-      reader.unwrap(data).then(comm.sendMsgs).catch(console.error);
+      reader.unwrap(data).then(comm.sendMsgs).catch(str => showMsg("error", str));
     });
   });
 }
@@ -106,7 +106,7 @@ function sendDebugMsgs(msg) {
   } else {
     buff = Buffer.concat([Buffer.from("id:" + debug.id + ","), Buffer.from(msg)]);
   }
-  unwrap(buff).then(comm.sendMsgs).catch(console.error);
+  unwrap(buff).then(comm.sendMsgs).catch(str => showMsg("error", str));
 }
 
 function sendSensorData() {
@@ -124,36 +124,36 @@ function consoleHandler(line) {
   if (line[0] == '.') {
     if (line == ".reconnect") {
       interface.port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}});
-      console.log("\n");
+      showMsg("info", "\n");
     } else if (line == ".mute") {
       interface.muteConnectionError = true;
-      console.log("Subscriber connection errors muted.\n")
+      showMsg("info", "Subscriber connection errors muted.\n");
     } else if (line == ".unmute") {
       interface.muteConnectionError = false;
-      console.log("Subscriber connection errors unmuted.\n")
+      showMsg("info", "Subscriber connection errors unmuted.\n")
     } else if (interface.debugMode && line.startsWith(".setid ")) {
       if (line.length = 11) {
         debug.id = line.substring(7)
-        console.log(`Set Debug ID to ${debug.id}.`);
-      } else console.log(`Could not set Debug ID to ${line.substring(7)}`);
+        showMsg("info", `Set Debug ID to ${debug.id}.`);
+      } else showMsg("info", `Could not set Debug ID to ${line.substring(7)}`);
     } else if (interface.debugMode && line.startsWith(".eat ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
-        console.log("Could not interpret the command '" + line + "'");
+        showMsg("info", "Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("EAT:" + d);
     } else if (interface.debugMode && line.startsWith(".exercise ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
-        console.log("Could not interpret the command '" + line + "'");
+        showMsg("info", "Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("EXERCISE:" + d);
     } else if (interface.debugMode && line.startsWith(".pet ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
-        console.log("Could not interpret the command '" + line + "'");
+        showMsg("info", "Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("PET:" + d);
@@ -169,11 +169,11 @@ function consoleHandler(line) {
             + "\nAddress can be specified using XXXX# prefix.\n"
           :
           "\nAny message not starting with '.' will be sent to the SensorTag.\n";
-      console.log("Supported commands:\n" +
+      showMsg("info", "Supported commands:\n" +
         "  .reconnect   Force port reconnect\n" +
         "  .mute        Mute the 'Broker unreachable' warning\n" +
         "  .unmute      Unmute the 'Broker unreachable' warning\n" + sendInstruction);
-    } else console.log("Unknown command");
+    } else showMsg("info", "Unknown command");
   } else if (!interface.isServer) { // not server, so all input is sent raw (internal: true)
     uart.uartWrite({internal: true, str: line});
   } else if (/[0-9a-f]{4}#.+/i.test(line)) { // check if the sensortag address is given in the beginning as 6261#message for sending "message" to id:ab
@@ -185,15 +185,17 @@ function consoleHandler(line) {
 }
 
 /**
- * @brief Send a message on all interfaces (the console and the MQTTS broker)
- * @param topic The MQTT topic on which this message should be published on
+ * @brief Send a message on all interfaces (the console and the backend connection)
+ * @param topic The topic of this message (info, error, debug, recv)
  * @param str The message
- * @return A resolve promise for knowing when the MQTTS publish has been completed.
+ * @return A resolve promise to guarantee completition
  */
 function showMsg(topic, str) {
   return new Promise(resolve => {
+    process.stdout.write("\033[1G"); // move cursor to beginning of line
     console.log(str);
-    //comm.send(topic, str).then(resolve); // can forward error to MQTT broker
+    rl.prompt(); // write prompt
+    //comm.send(topic, str).then(resolve); // can forward error to backend
     resolve();
   });
 }
@@ -202,8 +204,10 @@ function showMsg(topic, str) {
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
-  terminal: false
+  prompt: '$ ',
+  terminal: true
 });
+rl.on('close', () => process.exit(0));
 
 // SIGINT handler
 process.once('SIGINT', function(code) {
