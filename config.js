@@ -10,9 +10,9 @@ var interface = {};
 interface.mqtt = {};
 interface.mqtt.host = 'mqtt://localhost:10311';
 interface.mqtt.options = {
-  ca: fs.readFileSync('certs/ca.crt'),
+  /*ca: fs.readFileSync('certs/ca.crt'),
   key: fs.readFileSync('certs/mqttClientKey.key'),
-  cert: fs.readFileSync('certs/mqttClientKey.crt'),
+  cert: fs.readFileSync('certs/mqttClientKey.crt'),*/
   rejectUnauthorized: false
 };
 
