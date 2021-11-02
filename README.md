@@ -20,6 +20,8 @@ Usage instructions:
 
 The basic config uses baudrate 9600 and UART messages end in '\0'. More information on setting baudrate with `node interface.js --help`.
 
+For trying the program out yourself, you can set the interface to offline mode to prevent outgoing connections to backend. This can be done by using the command line flag `node interface.js -o`.
+
 ## UART Messaging
 
 The Interface can receive and send UART messages. The messages sent from the SensorTag should always be zero-terminated ('\0'), because the message delimiter is a zero byte. The standard `UART_write(uartHandle, str, strlen(str))` does not end the message in zero, and instead it has to be manually added. Remember, the function strlen only counts up to the first zero, not including it.

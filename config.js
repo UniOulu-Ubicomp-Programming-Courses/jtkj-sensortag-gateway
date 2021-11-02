@@ -23,6 +23,8 @@ interface.socket.options = {
   path: "/api/v1/databaseconnector/sockets"
 };
 
+interface.offline = false;
+
 // XXX: There are interface server related values at the bottom
 interface.uart = {};
 interface.uart.txlength = 50;

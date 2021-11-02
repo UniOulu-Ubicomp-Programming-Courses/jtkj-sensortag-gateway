@@ -4,6 +4,7 @@
  * @author Vili Pelttari
  *
  * Dependencies (npm):
+ *    socket.io-client
  *    serialport
  *    queue-fifo
  *    moment
@@ -12,8 +13,8 @@
  * Capabilities:
  *    - 2-way UART communication with a SensorTag. Receives and sends messages
  *    - Should automatically find the right port
- *    - Sends data to the MQTT broker
- *    - Receives data over MQTTS subscription
+ *    - Sends data to the backend over a TLS connection
+ *    - Receives data from backend over a TLS connection
  *
  * Usage: Plug in a SensorTag via USB and run this file in powershell or similar with Node.js.
  *  - run powershell
@@ -220,8 +221,8 @@ process.once('SIGTERM', function(code) {
 
 let debug = {id: "0123"};
 
-// Start MQTT
-comm.startComm();
+// Start communication to backend
+if (!interface.offline) comm.startComm();
 // Start program
 if (!interface.debugMode) {
   process.stdout.write("\033[s"); // save cursor position
