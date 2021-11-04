@@ -33,6 +33,7 @@ const
     readline = require("readline");
       reader = require("./lib/reader");
         uart = require("./lib/uart");
+        util = require("./lib/util");
         comm = require("./lib/comm-socket");
 
 /**
@@ -47,7 +48,7 @@ function main(path) {
   let parser, heartbeatService;
   interface.port = new SerialPort(path, {baudRate: interface.uart.baudRate}, function(err) {
     if (err === null) return;
-    showMsg("error", "Bad port: " + err.message);
+    util.showMsg("error", "Bad port: " + err.message);
     portFinder.findPorts().then(main);
     return; // leave portfinder to searching and exit main meanwhile
   });
@@ -59,7 +60,7 @@ function main(path) {
       parser = interface.port.pipe(new Delimiter({delimiter: interface.uart.delim}));
     }
   } catch(e) {
-    showMsg("error", "Error opening port parser: " + e.message);
+    util.showMsg("error", "Error opening port parser: " + e.message);
     return;
   }
 
@@ -70,9 +71,9 @@ function main(path) {
 
   interface.port.on("close", (err) => { // disconnection detection is slow on some devices
     if (err != null && err.disconnected) {
-      showMsg("error", "The SensorTag server disconnected from USB! Please reconnect.");
+      util.showMsg("error", "The SensorTag server disconnected from USB! Please reconnect.");
     } else if (err != null) {
-      showMsg("error", "Unencountered error with UART connection. Attempting to reconnect.");
+      util.showMsg("error", "Unencountered error with UART connection. Attempting to reconnect.");
     }
     setTimeout(() => {
       if (uart.responded) {
@@ -89,13 +90,13 @@ function main(path) {
   // Main functionality after connection is established:
   interface.port.on("open", () => {
     let dict = [], topic = "";
-    showMsg("info", "UART connection opened.");
+    util.showMsg("info", "UART connection opened.");
     if (interface.isServer) setTimeout(uart.sendChallenge, 1000);
     else uart.responded = true;
     parser.on("data", function(data) {
       if (!uart.responded && !uart.parseChallenge(data)) return;
       // read the data, send via MQTT on success and show errors in console on failure
-      reader.unwrap(data).then(comm.sendMsgs).catch(str => showMsg("error", str));
+      reader.unwrap(data).then(comm.sendMsgs).catch(str => util.showMsg("error", str));
     });
   });
 }
@@ -107,7 +108,7 @@ function sendDebugMsgs(msg) {
   } else {
     buff = Buffer.concat([Buffer.from("id:" + debug.id + ","), Buffer.from(msg)]);
   }
-  unwrap(buff).then(comm.sendMsgs).catch(str => showMsg("error", str));
+  reader.unwrap(buff).then(comm.sendMsgs).catch(str => util.showMsg("error", str));
 }
 
 function sendSensorData() {
@@ -124,37 +125,37 @@ function sendSensorData() {
 function consoleHandler(line) {
   if (line[0] == '.') {
     if (line == ".reconnect") {
-      interface.port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}});
-      showMsg("info", "\n");
+      interface.port.close(err => {if (err) {util.showMsg("error", "Port close error: "+err);}});
+      util.showMsg("info", "\n");
     } else if (line == ".mute") {
       interface.muteConnectionError = true;
-      showMsg("info", "Subscriber connection errors muted.\n");
+      util.showMsg("info", "Subscriber connection errors muted.\n");
     } else if (line == ".unmute") {
       interface.muteConnectionError = false;
-      showMsg("info", "Subscriber connection errors unmuted.\n")
+      util.showMsg("info", "Subscriber connection errors unmuted.\n")
     } else if (interface.debugMode && line.startsWith(".setid ")) {
       if (line.length = 11) {
         debug.id = line.substring(7)
-        showMsg("info", `Set Debug ID to ${debug.id}.`);
-      } else showMsg("info", `Could not set Debug ID to ${line.substring(7)}`);
+        util.showMsg("info", `Set Debug ID to ${debug.id}.`);
+      } else util.showMsg("info", `Could not set Debug ID to ${line.substring(7)}`);
     } else if (interface.debugMode && line.startsWith(".eat ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
-        showMsg("info", "Could not interpret the command '" + line + "'");
+        util.showMsg("info", "Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("EAT:" + d);
     } else if (interface.debugMode && line.startsWith(".exercise ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
-        showMsg("info", "Could not interpret the command '" + line + "'");
+        util.showMsg("info", "Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("EXERCISE:" + d);
     } else if (interface.debugMode && line.startsWith(".pet ")) {
       let d = Number(line.substring(5));
       if (isNaN(d)) {
-        showMsg("info", "Could not interpret the command '" + line + "'");
+        util.showMsg("info", "Could not interpret the command '" + line + "'");
         return;
       }
       sendDebugMsgs("PET:" + d);
@@ -170,11 +171,11 @@ function consoleHandler(line) {
             + "\nAddress can be specified using XXXX# prefix.\n"
           :
           "\nAny message not starting with '.' will be sent to the SensorTag.\n";
-      showMsg("info", "Supported commands:\n" +
+      util.showMsg("info", "Supported commands:\n" +
         "  .reconnect   Force port reconnect\n" +
         "  .mute        Mute the 'Broker unreachable' warning\n" +
         "  .unmute      Unmute the 'Broker unreachable' warning\n" + sendInstruction);
-    } else showMsg("info", "Unknown command");
+    } else util.showMsg("info", "Unknown command");
   } else if (!interface.isServer) { // not server, so all input is sent raw (internal: true)
     uart.uartWrite({internal: true, str: line});
   } else if (/[0-9a-f]{4}#.+/i.test(line)) { // check if the sensortag address is given in the beginning as 6261#message for sending "message" to id:ab
@@ -185,38 +186,13 @@ function consoleHandler(line) {
   }
 }
 
-/**
- * @brief Send a message on all interfaces (the console and the backend connection)
- * @param topic The topic of this message (info, error, debug, recv)
- * @param str The message
- * @return A resolve promise to guarantee completition
- */
-function showMsg(topic, str) {
-  return new Promise(resolve => {
-    process.stdout.write("\033[1G"); // move cursor to beginning of line
-    console.log(str);
-    rl.prompt(); // write prompt
-    //comm.send(topic, str).then(resolve); // can forward error to backend
-    resolve();
-  });
-}
-
-// readline interface for reading console input
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  prompt: '$ ',
-  terminal: true
-});
-rl.on('close', () => process.exit(0));
-
 // SIGINT handler
 process.once('SIGINT', function(code) {
-  showMsg("info", "Gateway encountered SIGINT. Exiting.").then(() => {interface.port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGINT")}).catch((err) => comm.end("SIGINT"));
+  util.showMsg("info", "Gateway encountered SIGINT. Exiting.").then(() => {interface.port.close(err => {if (err) {util.showMsg("error", "Port close error: "+err);}}); comm.end("SIGINT")}).catch((err) => comm.end("SIGINT"));
 });
 // SIGTERM handler
 process.once('SIGTERM', function(code) {
-  showMsg("info", "Gateway encountered SIGTERM. Exiting.").then(() => {interface.port.close(err => {if (err) {showMsg("error", "Port close error: "+err);}}); comm.end("SIGTERM")}).catch((err) => comm.end("SIGTERM"));
+  util.showMsg("info", "Gateway encountered SIGTERM. Exiting.").then(() => {interface.port.close(err => {if (err) {util.showMsg("error", "Port close error: "+err);}}); comm.end("SIGTERM")}).catch((err) => comm.end("SIGTERM"));
 });
 
 let debug = {id: "0123"};
@@ -226,17 +202,17 @@ if (!interface.offline) comm.startComm();
 // Start program
 if (!interface.debugMode) {
   process.stdout.write("\033[s"); // save cursor position
-  portFinder.init(rl, showMsg, consoleHandler);
+  portFinder.init(consoleHandler);
   portFinder.findPorts().then(main);
 } else {
-  //unwrap(Buffer.from("adping,event:UP\x00\x00")).then(console.log).catch(console.error);
-  rl.on("line", consoleHandler);
+  //reader.unwrap(Buffer.from("adping,event:UP\x00\x00")).then(console.log).catch(console.error);
+  util.rl.on("line", consoleHandler);
   if (interface.isServer) { // TODO make automated tests with Mocha
     //sendDebugMsgs("EAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25");
-    //unwrap(Buffer.from("abEAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25,ping")).then(comm.sendMsgs).catch(console.error);
+    //reader.unwrap(Buffer.from("abEAT:8,ACTIVATE:1;3;-3,session:start,press:1013.25,ping")).then(comm.sendMsgs).catch(console.error);
   } else {
     //let fun = async () => {
-      //await unwrap(Buffer.from("id:0123,EAT:3\r\n")).then(console.log).catch(console.error);
+      //await reader.unwrap(Buffer.from("id:0123,EAT:3\r\n")).then(console.log).catch(console.error);
     //}
     //fun();
   }
