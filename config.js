@@ -17,9 +17,10 @@ interface.mqtt.options = {
 };
 
 interface.socket = {};
-interface.socket.host = "http://localhost:8100";
+interface.socket.host = "https://computer-systems-database-connector-2021.rahtiapp.fi";
 interface.socket.options = {
   reconnect: true,
+  secure: true,
   path: "/api/v1/databaseconnector/sockets"
 };
 
