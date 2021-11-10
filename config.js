@@ -79,10 +79,10 @@ interface.topics = [ // All possible SensorTag data topics. Dummy topics are use
  *
  * Element description: A dictionary with values
  *  shortName - name in received UART message
- *  nameInDB  - name to be used when sending the property via MQTT
- *  topics    - the MQTT topics where this property can be sent to, an array
- *  forceSend - false or undefined. False when this property alone doesn't cause a MQTT message to
- *              be sent. Undefined otherwise
+ *  nameInDB  - name to be used when sending the property via backend connection
+ *  topics    - the backend connection topics where this property can be sent to, an array
+ *  forceSend - false or undefined. False when this property alone doesn't cause a message to
+ *              be sent to backend. Undefined otherwise
  *  fun       - A Promise-type function with one argument, used to parse the data from the UART
  *              message. Argument is the data belonging to this property ({shortName}:{argument}).
  *              Resolve gives the processed data on success, and reject message is shown in terminal on fail.
@@ -111,7 +111,7 @@ interface.dataTypes = [{
     shortName: "ping",
     nameInDB: "ping",
     topics: ["commands"], // dummy topic
-    forceSend: false, // don't send interface-related data to MQTT
+    forceSend: false, // don't send interface-related data to backend
     fun: d => new Promise((resolve, reject) => {
       resolve("pong");
     }),
