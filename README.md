@@ -57,7 +57,9 @@ The allowed key-value pairs are:
 
 Commas (',') are not supported within values, like MSG1 and MSG2!
 
-To send sensor data, the session has to first be started, sensor data is sent to the session, and the session is ended. Here is an example of a typical session with a single message per line:
+### Sending raw sensor data  
+
+To send sensor data as messages, the session has to first be started, sensor data is sent to the session, and the session is ended. Here is an example of a typical session with a single message per line:
 
 ```
 session:start
@@ -69,8 +71,18 @@ time:204,ax:-0.12,ay:0.15,az:-0.08
 session:end
 ```
 
-Accepted sensor data fields are: temp, humid, press, light, ax, ay, az, gx, gy, gz. Any of them can be given in each message within a session. The 'time' field can be used to indicate the current time according to the SensorTag, and otherwise it is the milliseconds since session:start according to the gateway. Session can be cleared mid-session by sending session:start again.
-Sensor data is given as a floating point number.
+Accepted sensor data fields are: temp, humid, press, light, ax, ay, az, gx, gy, gz. Any of them can be given in each message within a session. Sensor data is given as a floating point number.
+
+The 'time' field can be used to indicate the current time according to the SensorTag, and otherwise it is the milliseconds since session:start according to the gateway. Session can be cleared mid-session by sending session:start again.
+
+| Key     | Value    | Meaning |
+| ------- |:--------:| ------- |
+| temp    | float/double    | Temperature sensor data|
+| humid   | float/double | Humidity sensor data|
+| press   | float/double | Barometer sensor data|
+| light   | float/double | Ambient light sensor data|
+| ax, ay, az | float/double | Accelerometer data|
+| gx, gy, gz | float/double | Gyroscope data|
 
 ### Sending messages from the gateway
 
