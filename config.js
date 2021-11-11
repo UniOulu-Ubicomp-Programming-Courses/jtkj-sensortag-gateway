@@ -1,61 +1,61 @@
 /**
  * @file config.js
- * @brief Configuration for interface.js
+ * @brief Configuration for the gateway program
  * @author Vili Pelttari
  */
 const util = require("./lib/util.js");
 const fs = require("fs");
-var interface = {};
+var gateway = {};
 
-interface.mqtt = {};
-interface.mqtt.host = 'mqtt://localhost:10311';
-interface.mqtt.options = {
+gateway.mqtt = {};
+gateway.mqtt.host = 'mqtt://localhost:10311';
+gateway.mqtt.options = {
   /*ca: fs.readFileSync('certs/ca.crt'),
   key: fs.readFileSync('certs/mqttClientKey.key'),
   cert: fs.readFileSync('certs/mqttClientKey.crt'),*/
   rejectUnauthorized: false
 };
 
-interface.socket = {};
-interface.socket.host = "https://computer-systems-database-connector-2021.rahtiapp.fi";
-interface.socket.options = {
+gateway.socket = {};
+gateway.socket.host = "https://computer-systems-database-connector-2021.rahtiapp.fi";
+gateway.socket.options = {
   reconnect: true,
   secure: true,
   path: "/api/v1/databaseconnector/sockets"
 };
 
-interface.offline = false;
+gateway.offline = false;
 
-// XXX: There are interface server related values at the bottom
-interface.uart = {};
-interface.uart.txlength = 80;
-interface.uart.baudRate = 9600;
+// XXX: There are gateway server related values at the bottom
+gateway.uart = {};
+gateway.uart.txlength = 80;
+gateway.uart.baudRate = 9600;
 
 // UART message parser type
-interface.uart.pipe = "delimiter";
-//interface.uart.pipe = "length";
+gateway.uart.pipe = "delimiter";
+//gateway.uart.pipe = "length";
 
 // Delimiter parser
-interface.uart.delim = "\x00";
+gateway.uart.delim = "\x00";
 
 // Length parser
-interface.uart.rxlength = 82;
+gateway.uart.rxlength = 82;
 
-interface.ports = {};
-interface.ports.autofind = true;
-interface.ports.maxTries = 5;
+gateway.ports = {};
+gateway.ports.autofind = true;
+gateway.ports.maxTries = 5;
 
 // Mutes the 'Broker unreachable' warning if it is spammed
-interface.muteConnectionError = false;
+gateway.muteConnectionError = false;
 
 // Time after which connected addresses aren't remembered, in milliseconds.
 // Used for limiting reply messages from being broadcast from multiple interfaces
-interface.connectedAddressTimeout = 10000;
+gateway.connectedAddressTimeout = 10000;
 
 // How many rows of sensor data will be gathered from any SensorTag.
 /* Value is an approximation: 
  *  Raspberry 3 Model B+ has about 924 MiB of RAM. After starting three docker containers and this
- *  interface program, there is 440 MiB free RAM. If at maximum we would allocate 400 MiB for the
+ *  gateway program, there is 440 MiB free RAM. If at maximum we would allocate 400 MiB for the
  *  session data, assuming there are 1000 SensorTags, each sensor value is 64 bits = 8 bytes, there
  *  is no data structure overhead, and there are 11 different sensor data columns, this results in
  *    400 MiB / (1000*8*11/1024^2 MiB) ≈ 4766
@@ -65,9 +65,9 @@ interface.connectedAddressTimeout = 10000;
  *  50 milliseconds. If the maximum number of rows is exceeded, extra rows are not added to sensor
  *  data, and session:end still sends the so-far accumulated data to the database.
  */
-interface.maxSessionRows = 4500;
+gateway.maxSessionRows = 4500;
 
-interface.topics = [ // All possible SensorTag data topics. Dummy topics are used for interface commands
+gateway.topics = [ // All possible SensorTag data topics. Dummy topics are used for gateway commands
   "event",
   "tamaActions",
   "additionalMessages",
@@ -87,7 +87,7 @@ interface.topics = [ // All possible SensorTag data topics. Dummy topics are use
  *              message. Argument is the data belonging to this property ({shortName}:{argument}).
  *              Resolve gives the processed data on success, and reject message is shown in terminal on fail.
  */
-interface.dataTypes = [{
+gateway.dataTypes = [{
     shortName: "time",
     nameInDB: "timeStamp",
     topics: ["event", "sensordata"],
@@ -111,7 +111,7 @@ interface.dataTypes = [{
     shortName: "ping",
     nameInDB: "ping",
     topics: ["commands"], // dummy topic
-    forceSend: false, // don't send interface-related data to backend
+    forceSend: false, // don't send gateway-related data to backend
     fun: d => new Promise((resolve, reject) => {
       resolve("pong");
     }),
@@ -301,26 +301,26 @@ interface.dataTypes = [{
 
 // Server settings:
 
-interface.server = {};
-interface.server.baudRate = 57600;
-interface.server.pipe = "delimiter";
-interface.server.delim = Buffer.of(242);
-interface.isServer = false;
+gateway.server = {};
+gateway.server.baudRate = 57600;
+gateway.server.pipe = "delimiter";
+gateway.server.delim = Buffer.of(242);
+gateway.isServer = false;
 
 // Interval between checking if the ServerTag has crashed, in milliseconds
 // If this value is changed, please change it also in the ServerTag!
-interface.heartbeatInterval = 15000;
+gateway.heartbeatInterval = 15000;
 
-interface.debugMode = false;
+gateway.debugMode = false;
 
 // TODO maybe disable terminal clearing in server mode? It would function as a log
 
 // Parse command line arguments that change values defined here
-util.parseArgv(interface);
+util.parseArgv(gateway);
 
 // Global variables
-interface.connectedAddresses = {};
-interface.port = undefined; // the serial port after it has been found and connected to
+gateway.connectedAddresses = {};
+gateway.port = undefined; // the serial port after it has been found and connected to
 
 
-module.exports = interface;
+module.exports = gateway;

@@ -1,4 +1,4 @@
-# SensorTag Gateway Interface
+# SensorTag Gateway
 
 Johdatus tietokonejärjestelmiin 2021 / Introduction to Computer Systems 2021
 
@@ -24,7 +24,7 @@ For trying the program out yourself, you can set the interface to offline mode t
 
 ## UART Messaging
 
-The Interface can receive and send UART messages. The messages sent from the SensorTag should always be zero-terminated ('\0'), because the message delimiter is a zero byte. The standard `UART_write(uartHandle, str, strlen(str))` does not end the message in zero, and instead it has to be manually added. Remember, the function strlen only counts up to the first zero, not including it.
+The gateway can receive and send UART messages. The messages sent from the SensorTag should always be zero-terminated ('\0'), because the message delimiter is a zero byte. The standard `UART_write(uartHandle, str, strlen(str))` does not end the message in zero, and instead it has to be manually added. Remember, the function strlen only counts up to the first zero, not including it.
 
 ### Format for received messages
 
@@ -60,7 +60,7 @@ Sensor data is given as a floating point number.
 
 Commas (',') are not supported within values, like MSG1 and MSG2!
 
-### Sending messages from the Interface
+### Sending messages from the gateway
 
 All typed text not beginning with a '.' character is sent to the connected SensorTag via UART. This always sends a 50 bytes long zero terminated string, meaning, you can use a fixed size reception buffer, or the delimiter '\0', to receive the UART message. 
 
@@ -71,4 +71,4 @@ The Tamagotchi sends a message 'id,BEEP' from the backend for each value when it
 
 When the program starts, it attempts to find a serial port for the connected SensorTag. In this phase, if the port is not automatically found, the user can input a port number to connect to. Automatic port selection can be disabled by using the `-m` flag.
 
-After connecting to a port, the TUI can be used to manually send messages to the connected SensorTag, and to control the Interface by commands displayed in '.help'. The most notable command is '.reconnect', which can be used to try to re-establish connection to the SensorTag, if you should need to do so.
+After connecting to a port, the TUI can be used to manually send messages to the connected SensorTag, and to control the gateway by commands displayed in '.help'. The most notable command is '.reconnect', which can be used to try to re-establish connection to the SensorTag, if you should need to do so.
