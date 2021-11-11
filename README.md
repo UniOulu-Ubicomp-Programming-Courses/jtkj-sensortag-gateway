@@ -1,8 +1,8 @@
-# SensorTag Interface
+# SensorTag Gateway Interface
 
 Johdatus tietokonejärjestelmiin 2021 / Introduction to Computer Systems 2021
 
-This is an interface program that enables communication with the JTKJ background system using the Texas Instruments SensorTag(s).
+This is a gateway program that enables communication with the JTKJ background system using the Texas Instruments SensorTag(s).
 
 ## Installation 
 
@@ -16,11 +16,11 @@ Usage instructions:
 * Copy this project to your computer
 * Open a terminal in the project directory
 * Run `npm install` once
-* Run `node interface.js`
+* Run `node gateway.js`
 
-The basic config uses baudrate 9600 and UART messages end in '\0'. More information on setting baudrate with `node interface.js --help`.
+The basic config uses baudrate 9600 and UART messages end in '\0'. More information on setting baudrate with `node gateway.js --help`.
 
-For trying the program out yourself, you can set the interface to offline mode to prevent outgoing connections to backend. This can be done by using the command line flag `node interface.js -o`.
+For trying the program out yourself, you can set the interface to offline mode to prevent outgoing connections to backend. This can be done by using the command line flag `node gateway.js -o`.
 
 ## UART Messaging
 
