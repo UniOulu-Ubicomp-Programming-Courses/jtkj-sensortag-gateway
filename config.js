@@ -28,7 +28,7 @@ interface.offline = false;
 
 // XXX: There are interface server related values at the bottom
 interface.uart = {};
-interface.uart.txlength = 50;
+interface.uart.txlength = 80;
 interface.uart.baudRate = 9600;
 
 // UART message parser type
