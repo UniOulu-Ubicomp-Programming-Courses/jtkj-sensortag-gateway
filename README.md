@@ -55,10 +55,22 @@ The allowed key-value pairs are:
 | ping    | | Respond with 'pong' to the sending ID, if the message was interpreted without error. Extra 'session:end's are not errors, so ping can be used to reliably end sensor data sessions in weak signal situations |
 | session | start/end | Session collects sensor data in the interface. Once the session ends, the data is sent to the database and can be viewed by refreshing the graph. Starting the session when a session is already open will empty the session |
 
-Sensor data fields are: temp, humid, press, light, ax, ay, az, gx, gy, gz.
-Sensor data is given as a floating point number.
-
 Commas (',') are not supported within values, like MSG1 and MSG2!
+
+To send sensor data, the session has to first be started, sensor data is sent to the session, and the session is ended. Here is an example of a typical session with a single message per line:
+
+```
+session:start
+time:2,ax:0.21,ay:0.01,az:-0.02
+time:52,ax:0.41,ay:0.03,az:-0.05
+time:103,ax:0.35,ay:-0.01,az:0.02
+time:153,ax:-0.38,ay:0.21,az:0.06
+time:204,ax:-0.12,ay:0.15,az:-0.08
+session:end
+```
+
+Accepted sensor data fields are: temp, humid, press, light, ax, ay, az, gx, gy, gz. Any of them can be given in each message within a session. The 'time' field can be used to indicate the current time according to the SensorTag, and otherwise it is the milliseconds since session:start according to the gateway. Session can be cleared mid-session by sending session:start again.
+Sensor data is given as a floating point number.
 
 ### Sending messages from the gateway
 
