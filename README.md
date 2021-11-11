@@ -22,29 +22,21 @@ The basic config uses baudrate 9600 and UART messages end in '\0'. More informat
 
 For trying the program out yourself, you can set the interface to offline mode to prevent outgoing connections to backend. This can be done by using the command line flag `node gateway.js -o`.
 
-## UART Messaging
+## Messaging through the gateway
 
-The gateway can receive and send UART messages. The messages sent from the SensorTag should always be zero-terminated ('\0'), because the message delimiter is a zero byte. The standard `UART_write(uartHandle, str, strlen(str))` does not end the message in zero, and instead it has to be manually added. Remember, the function strlen only counts up to the first zero, not including it.
+The gateway can receive and send messages either wirelessly or by using UART, depending on how the Sensortag is connected. 
 
-### Format for received messages
+The messages sent from the SensorTag should always be zero-terminated ('\0'), because the message delimiter is a zero byte. 
 
-Examples:
+With UART communications, the standard `UART_write(uartHandle, str, strlen(str))` does not end the message in zero, and instead it has to be manually added. Remember, the function strlen only counts up to the first zero, not including it.
 
-| Message | Meaning |
-| ------- | ------- |
-| id:23,EAT:8 | Your SensorTag ID is 0023. If the tamagotchi is visible in a browser, feed it 8 times |
-| id:23,PET:2,EXERCISE:1 | If the tamagotchi is visible in a browser, pet it 2 times and exercise once |
-| id:123,EXERCISE:2,ping | Exercise tamagotchi by 2. Replies with 'pong' once the command has been executed correctly |
-| id:42,MSG1:Health: ##--- 40%,MSG2:State 2 / Value 2.21 | Set msg1 to "Health: ##--- 40%", and msg2 to "State 2 / Value 2.21". Remember, there can be no commas in the msg values |
-| id:15,session:start,temp:27.82,session:end,ping | Start a sensor data session, write one temperature value in the session and write it to database. Reply with 'pong' after execution |
-| id:1234,ACTIVATE:1;2;3,light:208 | Feed tamagotchi 1, exercise tamagotchi 2, pet tamagotchi 3. Record light level into an open sensor data session, if one exists |
-
+### Message format examples
 
 The allowed key-value pairs are:
 
 | Key     | Value    | Meaning |
 | ------- |:--------:| ------- |
-| id      | Four hexadecimal characters | SensorTag ID. Must be given when directly using UART! |
+| id      | Four hexadecimal characters | SensorTag ID. Not needed with wireless communications, but must be given when directly using UART! |
 | EAT     | Integer from 0 to 10 | Feed tamagotchi |
 | EXERCISE| Integer from 0 to 10 | Exercise tamagotchi |
 | PET     | Integer from 0 to 10 | Pet tamagotchi |
@@ -56,6 +48,17 @@ The allowed key-value pairs are:
 | session | start/end | Session collects sensor data in the interface. Once the session ends, the data is sent to the database and can be viewed by refreshing the graph. Starting the session when a session is already open will empty the session |
 
 Commas (',') are not supported within values, like MSG1 and MSG2!
+
+Examples: 
+
+| Message | Meaning |
+| ------- | ------- |
+| id:23,EAT:8 | Your SensorTag ID is 0023. If the tamagotchi is visible in a browser, feed it 8 times |
+| id:23,PET:2,EXERCISE:1 | If the tamagotchi is visible in a browser, pet it 2 times and exercise once |
+| id:123,EXERCISE:2,ping | Exercise tamagotchi by 2. Replies with 'pong' once the command has been executed correctly |
+| id:42,MSG1:Health: ##--- 40%,MSG2:State 2 / Value 2.21 | Set msg1 to "Health: ##--- 40%", and msg2 to "State 2 / Value 2.21". Remember, there can be no commas in the msg values |
+| id:15,session:start,temp:27.82,session:end,ping | Start a sensor data session, write one temperature value in the session and write it to database. Reply with 'pong' after execution |
+| id:1234,ACTIVATE:1;2;3,light:208 | Feed tamagotchi 1, exercise tamagotchi 2, pet tamagotchi 3. Record light level into an open sensor data session, if one exists |
 
 ### Sending raw sensor data  
 
@@ -95,4 +98,6 @@ The Tamagotchi sends a message 'id,BEEP' from the backend for each value when it
 
 When the program starts, it attempts to find a serial port for the connected SensorTag. In this phase, if the port is not automatically found, the user can input a port number to connect to. Automatic port selection can be disabled by using the `-m` flag.
 
-After connecting to a port, the TUI can be used to manually send messages to the connected SensorTag, and to control the gateway by commands displayed in '.help'. The most notable command is '.reconnect', which can be used to try to re-establish connection to the SensorTag, if you should need to do so.
+After connecting to a port, the TUI can be used to manually send messages to the connected SensorTag, and to control the gateway by commands displayed in '.help'. 
+
+The most notable command is '.reconnect', which can be used to try to re-establish connection to the SensorTag, if you should need to do so.
