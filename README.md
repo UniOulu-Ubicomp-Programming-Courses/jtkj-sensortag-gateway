@@ -89,7 +89,7 @@ The 'time' field can be used to indicate the current time according to the Senso
 
 ### Sending messages from the gateway
 
-All typed text not beginning with a '.' character is sent to the connected SensorTag via UART. This always sends a 50 bytes long zero terminated string, meaning, you can use a fixed size reception buffer, or the delimiter '\0', to receive the UART message. 
+All typed text not beginning with a '.' character is sent to the connected SensorTag via UART. This always sends a 80 bytes long zero terminated string, meaning, you can use a fixed size reception buffer, or the delimiter '\0', to receive the UART message. 
 
 The Tamagotchi sends a message 'id,BEEP' from the backend for each value when it is low. For example, if the client's SensorTag ID is 0432, this message will be '432,BEEP'. Note the missing leading zeros.
 
