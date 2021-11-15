@@ -104,7 +104,7 @@ gateway.dataTypes = [{
     forceSend: false, // Reception doesn't warrant a send on the associated topics
     fun: d => new Promise((resolve, reject) => {
       if (!isNaN(Number("0x" + d)) && d.length <= 4 && d != '') {
-        resolve(d);
+        resolve(("0000" + d).slice(-4));
       } else reject("Error: SensorTag ID has to be 4 hex digits: " + d);
     }),
   }, {
