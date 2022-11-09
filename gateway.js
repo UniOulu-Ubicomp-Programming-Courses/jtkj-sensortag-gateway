@@ -75,7 +75,7 @@ function main(path) {
     });
 
     try {
-      if (gateway.uart.pipe == "length"){
+      if (gateway.server.pipe == "length"){
         parser = gateway.port.pipe(new ByteLength({length: gateway.server.rxlength}));
       } else {
         parser = gateway.port.pipe(new Delimiter({delimiter: gateway.server.delim}));
