@@ -46,25 +46,44 @@ const
  */
 function main(path) {
   let parser, heartbeatService;
-  gateway.port = new SerialPort(path, {baudRate: gateway.uart.baudRate}, function(err) {
-    if (err === null) return;
-    util.showMsg("error", "Bad port: " + err.message);
-    portFinder.findPorts().then(main);
-    return; // leave portfinder to searching and exit main meanwhile
-  });
+  if (!gateway.isServer) {
+    gateway.port = new SerialPort(path, {baudRate: gateway.uart.baudRate}, function(err) {
+      if (err === null) return;
+      util.showMsg("error", "Bad port: " + err.message);
+      portFinder.findPorts().then(main);
+      return; // leave portfinder to searching and exit main meanwhile
+    });
 
-  try {
-    if (gateway.uart.pipe == "length"){
-      parser = gateway.port.pipe(new ByteLength({length: gateway.uart.rxlength}));
-    } else {
-      parser = gateway.port.pipe(new Delimiter({delimiter: gateway.uart.delim}));
+    try {
+      if (gateway.uart.pipe == "length"){
+        parser = gateway.port.pipe(new ByteLength({length: gateway.uart.rxlength}));
+      } else {
+        parser = gateway.port.pipe(new Delimiter({delimiter: gateway.uart.delim}));
+      }
+    } catch(e) {
+      util.showMsg("error", "Error opening port parser: " + e.message);
+      return;
     }
-  } catch(e) {
-    util.showMsg("error", "Error opening port parser: " + e.message);
-    return;
   }
+  // For server, defines its own settings 
+  else  {
+    gateway.port = new SerialPort(path, {baudRate: gateway.server.baudRate}, function(err) {
+      if (err === null) return;
+      util.showMsg("error", "Bad port: " + err.message);
+      portFinder.findPorts().then(main);
+      return; // leave portfinder to searching and exit main meanwhile
+    });
 
-  if (gateway.isServer) {
+    try {
+      if (gateway.uart.pipe == "length"){
+        parser = gateway.port.pipe(new ByteLength({length: gateway.server.rxlength}));
+      } else {
+        parser = gateway.port.pipe(new Delimiter({delimiter: gateway.server.delim}));
+      }
+    } catch(e) {
+      util.showMsg("error", "Error opening port parser: " + e.message);
+      return;
+    }
     uart.hbTime = Date.now();
     heartbeatService = setInterval(uart.heartbeat, gateway.heartbeatInterval); // check ServerTag every 15 seconds
   }

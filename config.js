@@ -305,7 +305,7 @@ gateway.server = {};
 gateway.server.baudRate = 57600;
 gateway.server.pipe = "delimiter";
 gateway.server.delim = Buffer.of(242);
-gateway.isServer = false;
+gateway.isServer = true;
 
 // Interval between checking if the ServerTag has crashed, in milliseconds
 // If this value is changed, please change it also in the ServerTag!
