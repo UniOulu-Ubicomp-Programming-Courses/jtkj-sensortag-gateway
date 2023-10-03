@@ -1,8 +1,9 @@
 # SensorTag Gateway
 
-Johdatus tietokonejärjestelmiin 2021 / Introduction to Computer Systems 2021
+Johdatus tietokonejärjestelmiin 2021-2023 / Introduction to Computer Systems 2021-2023
 
 This is a gateway program that enables communication with the JTKJ background system using the Texas Instruments SensorTag(s).
+
 
 ## Installation 
 
@@ -11,11 +12,19 @@ Dependencies:
 nodejs
 npm
 ```
-
-Usage instructions:
-* Copy this project to your computer
-* Open a terminal in the project directory
-* Run `npm install` once
+**Installation instructions**
+1. Install Node.js, for example, from its own [homepage](https://nodejs.org/en/download/)
+    * Install also *Additional tools* when required.
+    * If you find problems in Windows:
+      * If the installation does not succeed try to follow the steps indicated in [this blog post](https://github.com/nodejs/node/issues/26279#issuecomment-960601551)
+      * If the previous does not work, try to install  [Visual Studio Build Tools](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools) or [Visual Studio Community](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community)
+1. Download or clone the whole repository in a folder of your file system.
+1. Open the Command Prompt / Terminal. Go to the folder where you have downloaded the gateway files and type: `npm install` (only once)
+   * Some students report that they have to install some of the dependencies manually. For that, in the same folder as you download the gateway:
+        `npm install <missing-dependency>` where missing dependency is the library required 
+1. Run `node gateway.js`   
+    
+**Running instructions**
 * Run `node gateway.js`
 
 The basic config uses baudrate 9600 and UART messages end in '\0'. More information on setting baudrate with `node gateway.js --help`.
